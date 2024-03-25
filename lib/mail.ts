@@ -36,10 +36,16 @@ export const sendVerificationEmail = async (
 ) => {
   const confirmLink = `${domain}/auth/new-verification?token=${token}`;
 
-  await resend.emails.send({
-    from: "info@santaleage.it",
-    to: email,
-    subject: "Confirm your email",
-    html: `<p>Click <a href="${confirmLink}">here</a> to confirm email.</p>`
-  });
+  try {
+    const upp = await resend.emails.send({
+      from: "info@santaleage.it",
+      to: email,
+      subject: "Confirm your email",
+      html: `<p>Click <a href="${confirmLink}">here</a> to confirm email.</p>`
+    });
+    console.log(upp)
+  }catch (error) {
+    console.error(error);
+  }
+
 };
