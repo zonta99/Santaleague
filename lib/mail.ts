@@ -1,5 +1,4 @@
 import { Resend } from "resend";
-import * as http from "http";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
