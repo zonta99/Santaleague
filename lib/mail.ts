@@ -1,15 +1,18 @@
 import { Resend } from "resend";
+import * as http from "http";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const domain = process.env.NEXT_PUBLIC_APP_URL;
+const domain = process.env.ENVIRONMENT==='production'?
+    'http://localhost:3000'
+    : process.env.NEXT_PUBLIC_APP_URL;
 
 export const sendTwoFactorTokenEmail = async (
   email: string,
   token: string
 ) => {
   await resend.emails.send({
-    from: "mail@auth-masterclass-tutorial.com",
+    from: "info@santaleague.it",
     to: email,
     subject: "2FA Code",
     html: `<p>Your 2FA code: ${token}</p>`
@@ -23,7 +26,7 @@ export const sendPasswordResetEmail = async (
   const resetLink = `${domain}/auth/new-password?token=${token}`
 
   await resend.emails.send({
-    from: "mail@auth-masterclass-tutorial.com",
+    from: "info@santaleague.it",
     to: email,
     subject: "Reset your password",
     html: `<p>Click <a href="${resetLink}">here</a> to reset password.</p>`
@@ -38,7 +41,7 @@ export const sendVerificationEmail = async (
 
   try {
     const upp = await resend.emails.send({
-      from: "info@santaleage.it",
+      from: "info@santaleague.it",
       to: email,
       subject: "Confirm your email",
       html: `<p>Click <a href="${confirmLink}">here</a> to confirm email.</p>`
