@@ -1,17 +1,11 @@
-// prisma/schema.prisma
-datasource db {
-  provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL")
-  directUrl = env("POSTGRES_URL_NO_SSL")
-}
-
 generator client {
   provider = "prisma-client-js"
 }
 
-enum UserRole {
-  ADMIN
-  USER
+datasource db {
+  provider  = "postgresql"
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NO_SSL")
 }
 
 model User {
@@ -20,11 +14,15 @@ model User {
   email                 String?                @unique
   emailVerified         DateTime?
   image                 String?
+  isTwoFactorEnabled    Boolean                @default(false)
   password              String?
   role                  UserRole               @default(USER)
   accounts              Account[]
-  isTwoFactorEnabled    Boolean                @default(false)
+  Match                 Match[]
+  MatchDetail           MatchDetail[]
+  Team                  Team[]
   twoFactorConfirmation TwoFactorConfirmation?
+  UserMatch             UserMatch[]
 }
 
 model Account {
@@ -33,24 +31,23 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
 
 model VerificationToken {
-  id      String   @id @default(cuid())
-  email   String
   token   String   @unique
   expires DateTime
+  email   String
+  id      String   @id @default(cuid())
 
   @@unique([email, token])
 }
@@ -74,10 +71,63 @@ model TwoFactorToken {
 }
 
 model TwoFactorConfirmation {
-  id String @id @default(cuid())
-
-  userId String
+  id     String @id @default(cuid())
+  userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
 
-  @@unique([userId])
+model Match {
+  id                        Int           @id @default(autoincrement())
+  status                    MatchStatus   @default(SCHEDULED)
+  date                      DateTime      @db.Date
+  location                  String        @db.VarChar(255)
+  team1_id                  Int?
+  team2_id                  Int?
+  result_team1_score        Int?
+  result_team2_score        Int?
+  mvp_id                    String?
+  User                      User?         @relation(fields: [mvp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Team_Match_team1_idToTeam Team?         @relation("Match_team1_idToTeam", fields: [team1_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Team_Match_team2_idToTeam Team?         @relation("Match_team2_idToTeam", fields: [team2_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  MatchDetail               MatchDetail[]
+  UserMatch                 UserMatch[]
+}
+
+model MatchDetail {
+  id             Int     @id @default(autoincrement())
+  match_id       Int?
+  goal_scorer_id String?
+  details        String?
+  User           User?   @relation(fields: [goal_scorer_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Match          Match?  @relation(fields: [match_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model Team {
+  id                         Int     @id @default(autoincrement())
+  name                       String  @db.VarChar(255)
+  captain_id                 String?
+  Match_Match_team1_idToTeam Match[] @relation("Match_team1_idToTeam")
+  Match_Match_team2_idToTeam Match[] @relation("Match_team2_idToTeam")
+  User                       User?   @relation(fields: [captain_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model UserMatch {
+  user_id  String
+  match_id Int
+  Match    Match  @relation(fields: [match_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  User     User   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([user_id, match_id])
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum MatchStatus {
+  SCHEDULED
+  ONGOING
+  COMPLETED
+  CANCELED
 }

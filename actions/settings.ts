@@ -76,14 +76,20 @@ export const settings = async (
     }
   });
 
-  update({
-    user: {
-      name: updatedUser.name,
-      email: updatedUser.email,
-      isTwoFactorEnabled: updatedUser.isTwoFactorEnabled,
-      role: updatedUser.role,
-    }
-  });
+  try {
+    await update({
+      user: {
+        name: updatedUser.name,
+        email: updatedUser.email,
+        isTwoFactorEnabled: updatedUser.isTwoFactorEnabled,
+        role: updatedUser.role,
+      }
+    });
+  }catch (error) {
+    return { error: "Error updating user!" }
+  }
+
+
 
   return { success: "Settings Updated!" }
 }

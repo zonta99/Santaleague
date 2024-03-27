@@ -30,7 +30,7 @@ export function MobileNavbar() {
       </Link>
       <Link
         className="flex flex-col items-center justify-center w-full text-xs font-medium transition-colors text-gray-500 peer-disabled:cursor-not-allowed peer-disabled:opacity-50 dark:text-gray-400"
-        href="#"
+        href="/profile"
       >
         <UserIcon className="w-5 h-5" />
         Profile
