@@ -1,13 +1,7 @@
-import { currentUser } from "@/lib/auth";
-
-const ServerPage = async () => {
-    const user = await currentUser();
 
 
+const Profile = async () => {
 
-    return (
-<></>
-    );
 }
 
-export default ServerPage;
+export default Profile;
