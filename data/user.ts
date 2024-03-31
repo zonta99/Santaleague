@@ -31,16 +31,5 @@ export const createUser = async ( data: User) => {
   }
 };
 
-export const getUserTeams = async (captain_id: string) => {
-  try {
-    const teams = await db.team.findMany({
-      where: { captain_id }
-    });
-
-    return teams;
-  } catch {
-    return null;
-  }
-}
 
 
