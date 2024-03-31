@@ -1,15 +1,18 @@
+
 import {getMatchById} from "@/data/match"
 import MatchComponent from "@/components/component/match/match";
+import {Match} from ".prisma/client";
 
 
 
 
 
 const MatchPage = async () => {
-    const match = await getMatchById(3)
+    const match :Match= await getMatchById(3)
+    console.log('match',match)
 
     return(
-        <MatchComponent match={match}/>
+        <></>
     )
 
 
