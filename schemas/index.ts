@@ -64,6 +64,15 @@ export const CreateMatchSchema = z.object({
   num_games: z.coerce.number().min(1).max(10),
 });
 
+export const GameDetailSchema = z.object({
+  game_id: z.number(),
+  match_id: z.number(),
+  event_type: z.enum(["Goal", "Assist", "Penalty", "YellowCard", "RedCard", "Substitution"]),
+  player_id: z.string().min(1, { message: "Seleziona un giocatore" }),
+  team_id: z.number({ required_error: "Seleziona una squadra" }),
+  minute: z.coerce.number().min(1).max(120).optional(),
+});
+
 export const RegisterSchema = z.object({
   email: z.string().email({
     message: "Email is required",

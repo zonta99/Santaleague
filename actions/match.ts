@@ -57,6 +57,18 @@ export const joinMatch = async (matchId: number) => {
   return { success: "Iscrizione confermata" };
 };
 
+export const updateMatchStatus = async (matchId: number, status: "SCHEDULED" | "ONGOING" | "COMPLETED" | "CANCELED") => {
+  const role = await currentRole();
+  if (role !== UserRole.ADMIN) return { error: "Non autorizzato" };
+
+  await db.match.update({ where: { id: matchId }, data: { status } });
+
+  revalidatePath(`/match/${matchId}`);
+  revalidatePath("/match");
+  revalidatePath("/dashboard");
+  return { success: "Stato aggiornato" };
+};
+
 export const leaveMatch = async (matchId: number) => {
   const user = await currentUser();
   if (!user?.id) return { error: "Non autenticato" };
