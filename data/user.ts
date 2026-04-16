@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import {User} from "@prisma/client";
 
 export const getUserByEmail = async (email: string) => {
   try {
@@ -19,3 +20,16 @@ export const getUserById = async (id: string) => {
     return null;
   }
 };
+
+export const createUser = async ( data: User) => {
+  try {
+    const user = await db.user.create({ data });
+
+    return user;
+  } catch {
+    return null;
+  }
+};
+
+
+
