@@ -3,9 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("POSTGRES_PRISMA_URL")
-  directUrl = env("POSTGRES_URL_NO_SSL")
+  provider = "postgresql"
 }
 
 model User {
@@ -23,6 +21,7 @@ model User {
   GameDetail            GameDetail[]
   Match                 Match[]
   TeamMember            TeamMember[]
+  MatchParticipant      MatchParticipant[]
   twoFactorConfirmation TwoFactorConfirmation?
 }
 
@@ -78,18 +77,30 @@ model TwoFactorConfirmation {
 }
 
 model Match {
-  id          Int         @id @default(autoincrement())
-  date        DateTime    @db.Date
-  mvp_id      String?
-  status      MatchStatus @default(SCHEDULED)
-  location_id Int?
-  match_type  String      @default("normal")
-  created_at  DateTime?   @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime?   @default(now()) @db.Timestamptz(6)
-  DraftPick   DraftPick[]
-  Game        Game[]
-  Location    Location?   @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  User        User?       @relation(fields: [mvp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id               Int                @id @default(autoincrement())
+  date             DateTime           @db.Date
+  mvp_id           String?
+  status           MatchStatus        @default(SCHEDULED)
+  location_id      Int?
+  match_type       String             @default("normal")
+  created_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  DraftPick        DraftPick[]
+  Game             Game[]
+  Location         Location?          @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  User             User?              @relation(fields: [mvp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  MatchParticipant MatchParticipant[]
+}
+
+model MatchParticipant {
+  id         Int       @id @default(autoincrement())
+  match_id   Int
+  user_id    String
+  joined_at  DateTime  @default(now())
+  Match      Match     @relation(fields: [match_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User       User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([match_id, user_id])
 }
 
 model Team {

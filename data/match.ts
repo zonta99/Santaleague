@@ -1,4 +1,43 @@
-import {db} from "@/lib/db";
+import { db } from "@/lib/db";
+
+export const getAllMatches = async () => {
+  return db.match.findMany({
+    orderBy: { date: "desc" },
+    select: {
+      id: true,
+      date: true,
+      status: true,
+      match_type: true,
+      Location: { select: { name: true } },
+      _count: { select: { Game: true, MatchParticipant: true } },
+    },
+  });
+};
+
+export const getMatchParticipants = async (matchId: number) => {
+  return db.matchParticipant.findMany({
+    where: { match_id: matchId },
+    select: {
+      user_id: true,
+      joined_at: true,
+      User: { select: { name: true, image: true } },
+    },
+  });
+};
+
+export const getRecentMatches = async (take = 3) => {
+  return db.match.findMany({
+    orderBy: { date: "desc" },
+    take,
+    select: {
+      id: true,
+      date: true,
+      status: true,
+      Location: { select: { name: true } },
+      _count: { select: { Game: true } },
+    },
+  });
+};
 
 
 export const getMatchById = async (id: number): Promise<any> => {

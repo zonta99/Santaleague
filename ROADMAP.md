@@ -2,14 +2,14 @@
 
 ## Fase 1 — Foundation UI
 - [x] Login / auth flow
-- [ ] Register form — stessa UI del login
-- [ ] Layout protetto — navbar definitiva con avatar, link alle sezioni, logout
-- [ ] Homepage — dashboard con ultime partite e classifica rapida
+- [x] Register form — stessa UI del login
+- [x] Layout protetto — navbar definitiva con avatar, link alle sezioni, logout
+- [x] Homepage — dashboard con ultime partite e classifica rapida
 
 ## Fase 2 — Gestione Partite
-- [ ] Lista match — pagina `/match` con tutte le giornate (non hardcoded `id: 3`)
-- [ ] Dettaglio match — `/match/[id]` dinamico con tutti i game della giornata
-- [ ] Admin: crea partita — form per creare un `Match` con data, location, tipo
+- [x] Lista match — pagina `/match` con tutte le giornate (non hardcoded `id: 3`)
+- [x] Dettaglio match — `/match/[id]` dinamico con tutti i game della giornata
+- [x] Admin: crea partita — form per creare un `Match` con data, location, tipo
 - [ ] Admin: aggiungi eventi — inserimento `GameDetail` (gol, cartellini, ecc.) durante o dopo la partita
 
 ## Fase 3 — Draft

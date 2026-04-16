@@ -1,143 +1,88 @@
-import {getMatchById} from "@/data/match"
-import {User, GameDetail, Game, Team, Match} from "@prisma/client";
-import Image from "next/image";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import {Table, TableBody, TableCell, TableRow} from "@/components/ui/table";
+import Link from "next/link";
+import { getAllMatches } from "@/data/match";
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { MatchStatus } from "@prisma/client";
+import { JoinMatchButton } from "./_components/join-match-button";
 
-type GameDetailType = GameDetail & {
-    id: number
-    event_type: string
-    player_id: number
-    team_id: number
-    User: User
-    Team: Team
-}
+const statusLabel: Record<MatchStatus, string> = {
+  SCHEDULED: "Programmata",
+  ONGOING: "In corso",
+  COMPLETED: "Conclusa",
+  CANCELED: "Annullata",
+};
 
-type GameType = Game & {
-    Team1: Team
-    Team2: Team
-    GameDetail: GameDetailType[]
-}
+const statusVariant: Record<MatchStatus, "default" | "secondary" | "destructive" | "outline"> = {
+  SCHEDULED: "secondary",
+  ONGOING: "default",
+  COMPLETED: "outline",
+  CANCELED: "destructive",
+};
 
-type MatchType = Match & {
-    Game: GameType[]
-}
+export default async function MatchListPage() {
+  const session = await auth();
+  const userId = session?.user?.id;
 
-const TeamLogo = ({team}: { team: Team }) => {
-    return (
-        <Image
-            alt={team.name}
-            className="rounded-full"
-            height="25"
-            src={team.logo || 'https://e7.pngegg.com/pngimages/177/345/png-clipart-juventus-logo-juventus-f-c-serie-a-juventus-stadium-football-uefa-champions-league-football-text-sport-thumbnail.png'}
-            style={{
-                aspectRatio: "1",
-                objectFit: "cover",
-            }}
-            width="25"
-        />
-    )
-}
+  const matches = await getAllMatches();
 
-const GameScore = ({game}: { game: GameType }) => {
+  const joinedMatchIds = userId
+    ? new Set(
+        (
+          await db.matchParticipant.findMany({
+            where: { user_id: userId },
+            select: { match_id: true },
+          })
+        ).map((p) => p.match_id)
+      )
+    : new Set<number>();
 
-    const team1Score = game.GameDetail.filter((el) => el.event_type == 'Goal' && el.team_id === game.team1_id).length
-    const team2Score = game.GameDetail.filter((el) => el.event_type == 'Goal' && el.team_id === game.team2_id).length
+  return (
+    <div className="w-full max-w-3xl space-y-6">
+      <h1 className="text-2xl font-bold">Giornate</h1>
 
+      {matches.length === 0 ? (
+        <p className="text-muted-foreground text-sm">Nessuna partita ancora registrata.</p>
+      ) : (
+        <div className="space-y-3">
+          {matches.map((match) => {
+            const isJoined = joinedMatchIds.has(match.id);
+            const canJoin = match.status === "SCHEDULED";
 
-    return (
-        <div className="flex items-center justify-center gap-4">
-            <div className="flex items-center gap-2">
-                <Image
-                    alt={game.Team1.name}
-                    className="rounded-full"
-                    height="48"
-                    src={game.Team1.logo || '/none.png'}
-                    style={{
-                        aspectRatio: "48/48",
-                        objectFit: "cover",
-                    }}
-                    width="48"
-                />
-                <div>
-                    <h3 className="font-medium">{game.Team1.name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{game.Team1.name}</p>
-                </div>
-            </div>
-            <div className="border border-gray-200 dark:border-gray-800 rounded-lg w-16 h-10">
-                <div className="flex h-full items-center justify-center text-sm font-semibold">{
-                    `${team1Score} - ${team2Score}`
-                }</div>
-            </div>
-            <div className="flex items-center gap-2">
-                <div>
-                    <h3 className="font-medium">{game.Team2.name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{game.Team2.name}</p>
-                </div>
-                <Image
-                    alt={game.Team2.name}
-                    className="rounded-full"
-                    height="48"
-                    src={game.Team2.logo || '/none.png'}
-                    style={{
-                        aspectRatio: "48/48",
-                        objectFit: "cover",
-                    }}
-                    width="48"
-                />
-
-            </div>
-        </div>
-    )
-}
-
-const GameDetailTable = ({gameDetails}: { gameDetails: GameDetailType[] }) => {
-
-    const detailRows = gameDetails?.map((el: GameDetailType) => (
-        <TableRow key={el.id}>
-            <TableCell>{el.minute}</TableCell>
-            <TableCell>{el.id}</TableCell>
-            <TableCell>{el.event_type}</TableCell>
-            <TableCell>{el.User.name}</TableCell>
-            <TableCell><TeamLogo team={el.Team}/></TableCell>
-        </TableRow>
-    ))
-    return (
-        <div className="mt-4">
-            <Table>
-                <TableBody >
-                    {detailRows}
-                </TableBody>
-            </Table>
-        </div>
-    )
-}
-
-const MatchPage = async () => {
-    const match: MatchType = await getMatchById(3)
-    const games = match.Game.map((game) => {
-        return (
-            <div key={game.id}>
-                {match.Game.length > 1 && <h2 className="text-xl font-semibold">Game {game.game_number}</h2>}
-                <GameScore game={game}/>
-                <GameDetailTable gameDetails={game.GameDetail}/>
-            </div>
-        )
-    })
-
-    return (
-        <Card className="w-full max-w-3xl">
-            <CardHeader>
-                <CardHeader>
-                    <CardTitle>Partita di clacio</CardTitle>
-                    <CardDescription>Game between Juve and Milan</CardDescription>
+            return (
+              <Card key={match.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <Link href={`/match/${match.id}`} className="hover:underline">
+                      <CardTitle className="text-base">
+                        {new Date(match.date).toLocaleDateString("it-IT", {
+                          weekday: "long",
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </CardTitle>
+                    </Link>
+                    <Badge variant={statusVariant[match.status]}>
+                      {statusLabel[match.status]}
+                    </Badge>
+                  </div>
                 </CardHeader>
-            </CardHeader>
-            <CardContent>
-                {games}
-            </CardContent>
-        </Card>
-    )
+                <CardContent className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {match.Location?.name && <span>{match.Location.name} · </span>}
+                    {match._count.Game} game · {match._count.MatchParticipant} partecipanti
+                  </p>
+                  {canJoin && (
+                    <JoinMatchButton matchId={match.id} isJoined={isJoined} />
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
-
-export default MatchPage;

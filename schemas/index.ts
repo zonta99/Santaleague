@@ -52,6 +52,18 @@ export const LoginSchema = z.object({
   code: z.optional(z.string()),
 });
 
+export const LocationSchema = z.object({
+  name: z.string().min(1, { message: "Nome obbligatorio" }),
+  description: z.optional(z.string()),
+});
+
+export const CreateMatchSchema = z.object({
+  date: z.string().min(1, { message: "Data obbligatoria" }),
+  location_id: z.coerce.number().min(1, { message: "Campo obbligatorio" }),
+  match_type: z.enum(["normal", "torneo"]),
+  num_games: z.coerce.number().min(1).max(10),
+});
+
 export const RegisterSchema = z.object({
   email: z.string().email({
     message: "Email is required",
