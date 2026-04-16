@@ -37,3 +37,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/.claude/
+/bun.lock
+/CLAUDE.md
+/docker-compose.yml
+/Dockerfile
+/.dockerignore

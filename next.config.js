@@ -1,7 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    output: 'standalone',
     images: {
-        domains: ['e7.pngegg.com','w7.pngwing.com'],
+        remotePatterns: [
+            { hostname: 'e7.pngegg.com' },
+            { hostname: 'w7.pngwing.com' },
+        ],
     }
 }
 
