@@ -100,7 +100,6 @@ export const getMatchById = async (id: number): Promise<any> => {
                             logo: true,
                         },
                     },
-                    rating_open: true,
                     status: true,
                     winner_team_id: true,
                     GameDetail: {

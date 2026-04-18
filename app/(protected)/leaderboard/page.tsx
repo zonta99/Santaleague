@@ -27,12 +27,12 @@ export default async function LeaderboardPage({
 
   return (
     <div className="w-full max-w-3xl space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Classifica</h1>
           <p className="text-muted-foreground text-sm">Punti accumulati dalle partite completate</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Button asChild variant="ghost" size="sm">
             <Link href="/season">
               <Archive className="h-4 w-4 mr-1" />
@@ -66,7 +66,7 @@ export default async function LeaderboardPage({
                   <th className="text-center py-3 px-2">
                     <TrendingUp className="h-3.5 w-3.5 inline text-blue-500" />
                   </th>
-                  <th className="text-center py-3 px-2">
+                  <th className="text-center py-3 px-2 hidden sm:table-cell">
                     <Star className="h-3.5 w-3.5 inline text-amber-400" />
                   </th>
                   <th className="text-center py-3 px-2 hidden sm:table-cell">Livello</th>
@@ -88,18 +88,18 @@ export default async function LeaderboardPage({
                     <td className="py-3 pl-2">
                       <Link href={`/player/${row.user.id}`} className="flex items-center gap-2 hover:underline">
                         {row.user.image ? (
-                          <Image src={row.user.image} alt="" width={24} height={24} className="rounded-full" />
+                          <Image src={row.user.image} alt="" width={24} height={24} className="rounded-full flex-shrink-0" />
                         ) : (
-                          <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-xs">
+                          <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-xs flex-shrink-0">
                             {row.user.name?.[0] ?? "?"}
                           </div>
                         )}
-                        {row.user.name ?? "—"}
+                        <span className="truncate max-w-[100px] sm:max-w-none">{row.user.name ?? "—"}</span>
                       </Link>
                     </td>
                     <td className="text-center py-3 px-2">{row.goals}</td>
                     <td className="text-center py-3 px-2">{row.wins}</td>
-                    <td className="text-center py-3 px-2">{row.mvpCount}</td>
+                    <td className="text-center py-3 px-2 hidden sm:table-cell">{row.mvpCount}</td>
                     <td className="text-center py-3 px-2 hidden sm:table-cell">
                       <TierBadge tier={row.tier} level={row.level} />
                     </td>

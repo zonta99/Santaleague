@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
-import { RatingGameCard } from "./_components/rating-game-card";
+import { RatingMatchCard } from "./_components/rating-match-card";
 import { Star, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -28,29 +28,19 @@ export default async function RatePage({ params }: Props) {
       id: true,
       date: true,
       status: true,
-      Game: {
+      rating_open: true,
+      rating_opened_at: true,
+      DraftPick: {
         select: {
-          id: true,
-          game_number: true,
-          rating_open: true,
-          rating_opened_at: true,
-          Match: {
-            select: {
-              DraftPick: {
-                select: {
-                  user_id: true,
-                  team_id: true,
-                  User: { select: { id: true, name: true, image: true } },
-                  Team: { select: { name: true } },
-                },
-              },
-            },
-          },
-          GameRating: {
-            where: { rater_id: userId },
-            select: { rated_player_id: true, score: true, role: true },
-          },
+          user_id: true,
+          team_id: true,
+          User: { select: { id: true, name: true, image: true } },
+          Team: { select: { name: true } },
         },
+      },
+      MatchRating: {
+        where: { rater_id: userId },
+        select: { rated_player_id: true, score: true, role: true },
       },
     },
   });
@@ -63,20 +53,11 @@ export default async function RatePage({ params }: Props) {
 
   if (!isParticipant && !isAdmin) notFound();
 
-  // Filter games relevant to this user (participated via draft)
-  const games = match.Game.filter((g) => {
-    const participated = g.Match.DraftPick.some((dp) => dp.user_id === userId);
-    return participated || isAdmin;
-  });
+  const isExpired = match.rating_opened_at
+    ? Date.now() - new Date(match.rating_opened_at).getTime() > 48 * 60 * 60 * 1000
+    : false;
 
-  const hasAnyOpen = games.some((g) => {
-    if (!g.rating_open) return false;
-    if (g.rating_opened_at) {
-      const diff = Date.now() - new Date(g.rating_opened_at).getTime();
-      if (diff > 48 * 60 * 60 * 1000) return false;
-    }
-    return true;
-  });
+  const isOpen = match.rating_open && !isExpired;
 
   return (
     <div className="w-full max-w-2xl space-y-5">
@@ -96,7 +77,7 @@ export default async function RatePage({ params }: Props) {
         </div>
       </div>
 
-      {!hasAnyOpen && (
+      {!isOpen && (
         <div className="flex flex-col items-center gap-3 py-12 text-center">
           <CheckCircle className="w-10 h-10 text-emerald-400" />
           <p className="font-medium">Nessuna valutazione in sospeso</p>
@@ -107,15 +88,13 @@ export default async function RatePage({ params }: Props) {
         </div>
       )}
 
-      {games.map((game) => (
-        <RatingGameCard
-          key={game.id}
-          game={game}
-          matchId={matchId}
+      {isOpen && (
+        <RatingMatchCard
+          match={match}
           currentUserId={userId}
           isAdmin={isAdmin}
         />
-      ))}
+      )}
     </div>
   );
 }

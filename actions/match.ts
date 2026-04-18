@@ -8,6 +8,7 @@ import { currentUser, currentRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { CreateMatchSchema } from "@/schemas";
 import { checkCareerBadgesForPlayer } from "@/actions/badges";
+import { createNotificationsForUsers } from "@/actions/notifications";
 import { getActiveSeason } from "@/data/season";
 
 export const createMatch = async (values: z.infer<typeof CreateMatchSchema>) => {
@@ -37,6 +38,15 @@ export const createMatch = async (values: z.infer<typeof CreateMatchSchema>) => 
       },
     },
   });
+
+  const allUsers = await db.user.findMany({ select: { id: true } });
+  await createNotificationsForUsers(
+    allUsers.map((u) => u.id),
+    "MATCH_SCHEDULED",
+    "Nuova partita programmata",
+    `È stata programmata una nuova partita per il ${new Date(date).toLocaleDateString("it-IT")}.`,
+    { match_id: match.id }
+  );
 
   revalidatePath("/match");
   revalidatePath("/dashboard");
@@ -69,9 +79,23 @@ export const updateMatchStatus = async (matchId: number, status: "SCHEDULED" | "
 
   await db.match.update({ where: { id: matchId }, data: { status } });
 
-  if (status === "COMPLETED") {
-    await db.game.updateMany({
+  if (status === "ONGOING") {
+    const participants = await db.matchParticipant.findMany({
       where: { match_id: matchId },
+      select: { user_id: true },
+    });
+    await createNotificationsForUsers(
+      participants.map((p) => p.user_id),
+      "MATCH_STARTED",
+      "La partita è iniziata!",
+      `La partita #${matchId} è ora in corso.`,
+      { match_id: matchId }
+    );
+  }
+
+  if (status === "COMPLETED") {
+    await db.match.update({
+      where: { id: matchId },
       data: { rating_open: true, rating_opened_at: new Date() },
     });
 
@@ -80,6 +104,13 @@ export const updateMatchStatus = async (matchId: number, status: "SCHEDULED" | "
       select: { user_id: true },
     });
     await Promise.all(participants.map((p) => checkCareerBadgesForPlayer(p.user_id)));
+    await createNotificationsForUsers(
+      participants.map((p) => p.user_id),
+      "MATCH_COMPLETED",
+      "Partita completata",
+      `La partita #${matchId} è terminata. Puoi ora lasciare le tue valutazioni.`,
+      { match_id: matchId }
+    );
   }
 
   revalidatePath(`/match/${matchId}`);

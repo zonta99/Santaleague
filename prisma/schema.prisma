@@ -7,27 +7,29 @@ datasource db {
 }
 
 model User {
-  id                    String                 @id @default(cuid())
-  name                  String?
-  email                 String?                @unique
-  emailVerified         DateTime?
-  image                 String?
-  isTwoFactorEnabled    Boolean                @default(false)
-  password              String?
-  role                  UserRole               @default(USER)
-  accounts              Account[]
-  DraftPick             DraftPick[]
-  Game                  Game[]
-  GameDetail            GameDetail[]
-  Match                 Match[]
-  Season                Season[]
-  TeamMember            TeamMember[]
-  MatchParticipant      MatchParticipant[]
-  twoFactorConfirmation TwoFactorConfirmation?
-  RatingGiven           GameRating[]           @relation("RatingGiven")
-  RatingReceived        GameRating[]           @relation("RatingReceived")
-  LevelFormulaUpdates   LevelFormula[]
-  UserBadge             UserBadge[]
+  id                      String                   @id @default(cuid())
+  name                    String?
+  email                   String?                  @unique
+  emailVerified           DateTime?
+  image                   String?
+  isTwoFactorEnabled      Boolean                  @default(false)
+  password                String?
+  role                    UserRole                 @default(USER)
+  accounts                Account[]
+  DraftPick               DraftPick[]
+  Game                    Game[]
+  GameDetail              GameDetail[]
+  Match                   Match[]
+  Season                  Season[]
+  TeamMember              TeamMember[]
+  MatchParticipant        MatchParticipant[]
+  twoFactorConfirmation   TwoFactorConfirmation?
+  MatchRatingGiven        MatchRating[]            @relation("MatchRatingGiven")
+  MatchRatingReceived     MatchRating[]            @relation("MatchRatingReceived")
+  LevelFormulaUpdates     LevelFormula[]
+  UserBadge               UserBadge[]
+  Notification            Notification[]
+  NotificationPreferences NotificationPreferences?
 }
 
 model Account {
@@ -108,7 +110,10 @@ model Match {
   team_balance_score Float?
   num_teams          Int                @default(2)
   players_per_team   Int                @default(5)
+  rating_open        Boolean            @default(false)
+  rating_opened_at   DateTime?
   DraftPick        DraftPick[]
+  MatchRating      MatchRating[]
   Game             Game[]
   Location         Location?          @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   User             User?              @relation(fields: [mvp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -182,22 +187,21 @@ model Game {
   Team2             Team?        @relation("Team2", fields: [team2_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   WinnerTeam        Team?        @relation("WinnerTeam", fields: [winner_team_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   GameDetail        GameDetail[]
-  GameRating        GameRating[]
 }
 
-model GameRating {
+model MatchRating {
   id              Int        @id @default(autoincrement())
-  game_id         Int
+  match_id        Int
   rater_id        String
   rated_player_id String
   score           Int
   role            RatingRole
   created_at      DateTime   @default(now())
-  Game            Game       @relation(fields: [game_id], references: [id], onDelete: Cascade)
-  Rater           User       @relation("RatingGiven", fields: [rater_id], references: [id], onDelete: Cascade)
-  RatedPlayer     User       @relation("RatingReceived", fields: [rated_player_id], references: [id], onDelete: Cascade)
+  Match           Match      @relation(fields: [match_id], references: [id], onDelete: Cascade)
+  Rater           User       @relation("MatchRatingGiven", fields: [rater_id], references: [id], onDelete: Cascade)
+  RatedPlayer     User       @relation("MatchRatingReceived", fields: [rated_player_id], references: [id], onDelete: Cascade)
 
-  @@unique([game_id, rater_id, rated_player_id, role])
+  @@unique([match_id, rater_id, rated_player_id, role])
 }
 
 model GameDetail {
@@ -285,6 +289,38 @@ model UserBadge {
   User       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   Badge      Badge    @relation(fields: [badge_id], references: [id], onDelete: Cascade)
   Season     Season?  @relation(fields: [season_id], references: [id], onDelete: SetNull)
+}
+
+enum NotificationType {
+  MATCH_SCHEDULED
+  MATCH_STARTED
+  DRAFT_PICKED
+  MATCH_COMPLETED
+  ADMIN_ANNOUNCEMENT
+}
+
+model Notification {
+  id         String           @id @default(cuid())
+  user_id    String
+  user       User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  type       NotificationType
+  title      String
+  message    String
+  read       Boolean          @default(false)
+  metadata   Json?
+  created_at DateTime         @default(now())
+}
+
+model NotificationPreferences {
+  id                 String  @id @default(cuid())
+  user_id            String  @unique
+  user               User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  match_scheduled    Boolean @default(true)
+  match_started      Boolean @default(true)
+  draft_picked       Boolean @default(true)
+  match_completed    Boolean @default(true)
+  admin_announcement Boolean @default(true)
+  email_enabled      Boolean @default(true)
 }
 
 model LevelFormula {

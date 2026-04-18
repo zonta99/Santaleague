@@ -90,6 +90,15 @@ export const LevelFormulaSchema = z.object({
   { message: "I pesi devono sommare a 1.0 (100%)" }
 );
 
+export const NotificationPreferencesSchema = z.object({
+  match_scheduled: z.boolean(),
+  match_started: z.boolean(),
+  draft_picked: z.boolean(),
+  match_completed: z.boolean(),
+  admin_announcement: z.boolean(),
+  email_enabled: z.boolean(),
+});
+
 export const RegisterSchema = z.object({
   email: z.string().email({
     message: "Email is required",

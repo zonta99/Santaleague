@@ -60,22 +60,22 @@ export default async function SeasonPage({ params }: { params: Promise<{ id: str
       {podium.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Podio</h2>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {podium.map((row, i) => (
               <Card key={row.user.id} className={i === 0 ? "border-amber-400/50" : ""}>
-                <CardContent className="flex flex-col items-center gap-2 py-4">
-                  <span className="text-2xl">{MEDAL[i]}</span>
+                <CardContent className="flex flex-col items-center gap-1.5 py-3 px-2">
+                  <span className="text-xl">{MEDAL[i]}</span>
                   {row.user.image ? (
-                    <Image src={row.user.image} alt="" width={40} height={40} className="rounded-full" />
+                    <Image src={row.user.image} alt="" width={32} height={32} className="rounded-full" />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center font-bold">
+                    <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center font-bold text-sm">
                       {row.user.name?.[0] ?? "?"}
                     </div>
                   )}
-                  <Link href={`/player/${row.user.id}`} className="text-sm font-medium hover:underline text-center">
+                  <Link href={`/player/${row.user.id}`} className="text-xs font-medium hover:underline text-center line-clamp-2 leading-tight">
                     {row.user.name}
                   </Link>
-                  <Badge variant="secondary">{row.points} pt</Badge>
+                  <Badge variant="secondary" className="text-xs px-1.5">{row.points} pt</Badge>
                 </CardContent>
               </Card>
             ))}
@@ -104,7 +104,7 @@ export default async function SeasonPage({ params }: { params: Promise<{ id: str
                   <th className="text-center py-3 px-2">
                     <TrendingUp className="h-3.5 w-3.5 inline text-blue-500" />
                   </th>
-                  <th className="text-center py-3 px-2">
+                  <th className="text-center py-3 px-2 hidden sm:table-cell">
                     <Star className="h-3.5 w-3.5 inline text-amber-400" />
                   </th>
                   <th className="text-right py-3 pr-4">
@@ -123,18 +123,18 @@ export default async function SeasonPage({ params }: { params: Promise<{ id: str
                     <td className="py-3 pl-2">
                       <Link href={`/player/${row.user.id}`} className="flex items-center gap-2 hover:underline">
                         {row.user.image ? (
-                          <Image src={row.user.image} alt="" width={24} height={24} className="rounded-full" />
+                          <Image src={row.user.image} alt="" width={24} height={24} className="rounded-full flex-shrink-0" />
                         ) : (
-                          <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-xs">
+                          <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-xs flex-shrink-0">
                             {row.user.name?.[0] ?? "?"}
                           </div>
                         )}
-                        {row.user.name ?? "—"}
+                        <span className="truncate max-w-[100px] sm:max-w-none">{row.user.name ?? "—"}</span>
                       </Link>
                     </td>
                     <td className="text-center py-3 px-2">{row.goals}</td>
                     <td className="text-center py-3 px-2">{row.wins}</td>
-                    <td className="text-center py-3 px-2">{row.mvpCount}</td>
+                    <td className="text-center py-3 px-2 hidden sm:table-cell">{row.mvpCount}</td>
                     <td className="text-right py-3 pr-4">
                       <Badge variant={i === 0 ? "default" : "secondary"}>{row.points}</Badge>
                     </td>

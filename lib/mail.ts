@@ -32,6 +32,30 @@ export const sendPasswordResetEmail = async (
   });
 };
 
+export const sendNotificationEmail = async (
+  email: string,
+  title: string,
+  message: string
+) => {
+  try {
+    await resend.emails.send({
+      from: "info@santaleague.it",
+      to: email,
+      subject: title,
+      html: `
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px;background:#111;color:#fff;border-radius:8px">
+          <h2 style="margin:0 0 8px;color:#fff">${title}</h2>
+          <p style="margin:0;color:#ccc">${message}</p>
+          <hr style="border:none;border-top:1px solid #333;margin:20px 0"/>
+          <p style="margin:0;font-size:12px;color:#666">SantaLeague — non rispondere a questa email</p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("sendNotificationEmail error:", error);
+  }
+};
+
 export const sendVerificationEmail = async (
   email: string, 
   token: string

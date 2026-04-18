@@ -8,10 +8,10 @@ interface ProtectedLayoutProps {
 const ProtectedLayout = ({ children }: ProtectedLayoutProps) => {
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      <header className="flex justify-center p-4 border-b border-border">
+      <header className="hidden md:flex justify-center border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50">
         <Navbar />
       </header>
-      <main className="flex-1 flex flex-col items-center px-4 pb-20 pt-6">
+      <main className="flex-1 flex flex-col items-center px-4 pb-20 md:pb-6 pt-6">
         {children}
       </main>
       <MobileNavbar />

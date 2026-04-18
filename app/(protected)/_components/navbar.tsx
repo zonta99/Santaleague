@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { UserButton } from "@/components/auth/user-button";
+import { NotificationBell } from "@/app/(protected)/_components/notification-bell";
 import { useCurrentRole } from "@/hooks/use-current-role";
 import { UserRole } from "@prisma/client";
 
 export const Navbar = () => {
   const pathname = usePathname();
   const role = useCurrentRole();
+
+  const isActive = (href: string) =>
+    href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
 
   const links = [
     { href: "/dashboard", label: "Home" },
@@ -24,19 +27,37 @@ export const Navbar = () => {
   ];
 
   return (
-    <nav className="bg-secondary flex justify-between items-center p-4 rounded-xl w-full max-w-3xl shadow-sm">
-      <div className="flex gap-x-2">
+    <nav className="relative flex items-center w-full px-6 h-14">
+      <div className="flex-1">
+        <Link
+          href="/dashboard"
+          className="text-base font-bold tracking-tight text-foreground hover:text-primary transition-colors"
+        >
+          Santaleague
+        </Link>
+      </div>
+
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-x-1">
         {links.map(({ href, label }) => (
-          <Button
+          <Link
             key={href}
-            asChild
-            variant={pathname === href ? "default" : "outline"}
+            href={href}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-sm font-medium transition-colors",
+              isActive(href)
+                ? "bg-primary/15 text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            )}
           >
-            <Link href={href}>{label}</Link>
-          </Button>
+            {label}
+          </Link>
         ))}
       </div>
-      <UserButton />
+
+      <div className="flex-1 flex items-center justify-end gap-x-2">
+        <NotificationBell />
+        <UserButton />
+      </div>
     </nav>
   );
 };

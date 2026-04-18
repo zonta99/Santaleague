@@ -26,7 +26,7 @@ export function AdminTabs({ role, children }: AdminTabsProps) {
 
   return (
     <Tabs value={current} onValueChange={(v) => router.push(`?tab=${v}`)}>
-      <TabsList className="mb-6">
+      <TabsList className="mb-6 flex-wrap h-auto gap-1">
         {tabs.map((t) => (
           <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
         ))}

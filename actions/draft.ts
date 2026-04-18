@@ -6,6 +6,7 @@ import { currentRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { getPlayerLevel } from "@/data/stats";
 import { snakeDraft, balanceDelta } from "@/lib/draft-algorithm";
+import { createNotificationsForUsers } from "@/actions/notifications";
 
 const TEAM_NAMES = ["Bianchi", "Neri", "Verdi", "Rossi", "Blu", "Gialli"];
 
@@ -81,6 +82,15 @@ export const executeDraft = async (matchId: number) => {
       data: { team1_id: teams[a].id, team2_id: teams[b].id },
     });
   }
+
+  const pickedUserIds = buckets.flat().map((p) => p.userId);
+  await createNotificationsForUsers(
+    pickedUserIds,
+    "DRAFT_PICKED",
+    "Sei stato assegnato a una squadra!",
+    `Il draft per la partita #${matchId} è completato. Controlla la tua squadra.`,
+    { match_id: matchId }
+  );
 
   revalidatePath(`/match/${matchId}`);
   revalidatePath(`/match/${matchId}/draft`);

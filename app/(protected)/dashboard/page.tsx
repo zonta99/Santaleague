@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getRecentMatches } from "@/data/match";
 import { getUserStats } from "@/data/stats";
-import { getPendingRatingGames } from "@/data/ratings";
+import { getPendingRatingMatches } from "@/data/ratings";
 import { currentUser } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +64,7 @@ export default async function DashboardPage() {
   const [matches, stats, pendingRatings] = await Promise.all([
     getRecentMatches(3),
     user?.id ? getUserStats(user.id) : null,
-    user?.id ? getPendingRatingGames(user.id) : [],
+    user?.id ? getPendingRatingMatches(user.id) : [],
   ]);
 
   const firstName = user?.name?.split(" ")[0] ?? "Giocatore";
@@ -79,17 +79,17 @@ export default async function DashboardPage() {
       {pendingRatings.length > 0 && (
         <section>
           <Card className="border-amber-500/30 bg-amber-500/5">
-            <CardContent className="flex items-center justify-between py-4">
-              <div className="flex items-center gap-3">
-                <Star className="h-5 w-5 text-amber-400" />
-                <div>
+            <CardContent className="flex items-center justify-between gap-3 py-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <Star className="h-5 w-5 text-amber-400 flex-shrink-0" />
+                <div className="min-w-0">
                   <p className="font-semibold text-amber-200">Valutazioni in sospeso</p>
                   <p className="text-sm text-muted-foreground">
                     Hai {pendingRatings.length} {pendingRatings.length === 1 ? "partita" : "partite"} da valutare
                   </p>
                 </div>
               </div>
-              <Button asChild size="sm" className="bg-amber-500 hover:bg-amber-400 text-black font-semibold">
+              <Button asChild size="sm" className="bg-amber-500 hover:bg-amber-400 text-black font-semibold flex-shrink-0">
                 <Link href={`/match/${pendingRatings[0].match_id}/rate`}>Vota ora</Link>
               </Button>
             </CardContent>
@@ -103,18 +103,18 @@ export default async function DashboardPage() {
             Prossima partita
           </h2>
           <Card className="border-primary/40 bg-primary/5">
-            <CardContent className="flex items-center justify-between py-4">
-              <div className="flex items-center gap-3">
-                <CalendarCheck className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="font-semibold">{formatDate(stats.nextMatch.date)}</p>
-                  <p className="text-sm text-muted-foreground">
+            <CardContent className="flex items-center justify-between gap-3 py-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <CalendarCheck className="h-5 w-5 text-primary flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-semibold truncate">{formatDate(stats.nextMatch.date)}</p>
+                  <p className="text-sm text-muted-foreground truncate">
                     {stats.nextMatch.Location?.name ?? "Campo da definire"} ·{" "}
                     {stats.nextMatch._count.MatchParticipant} iscritti
                   </p>
                 </div>
               </div>
-              <Badge variant="secondary">Iscritto</Badge>
+              <Badge variant="secondary" className="flex-shrink-0">Iscritto</Badge>
             </CardContent>
           </Card>
         </section>

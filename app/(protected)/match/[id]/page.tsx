@@ -1,5 +1,5 @@
 import { getMatchById, getMatchParticipants } from "@/data/match";
-import { getPendingRatingGames } from "@/data/ratings";
+import { getPendingRatingMatches } from "@/data/ratings";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { UserRole } from "@prisma/client";
@@ -34,7 +34,7 @@ export default async function MatchDetailPage({ params }: Props) {
   const [match, participants, pendingRatings] = await Promise.all([
     getMatchById(matchId),
     getMatchParticipants(matchId),
-    userId ? getPendingRatingGames(userId) : Promise.resolve([]),
+    userId ? getPendingRatingMatches(userId) : Promise.resolve([]),
   ]);
 
   if (!match) notFound();

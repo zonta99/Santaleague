@@ -201,12 +201,12 @@ export default async function PlayerProfilePage({
                 <tbody>
                   {matchRows.map((row) => (
                     <tr key={row.matchId} className="border-b last:border-0 hover:bg-accent transition-colors">
-                      <td className="py-3 pl-4">
-                        <Link href={`/match/${row.matchId}`} className="hover:underline">
+                      <td className="py-3 pl-4 max-w-[120px]">
+                        <Link href={`/match/${row.matchId}`} className="hover:underline block truncate text-xs sm:text-sm">
                           {formatDate(row.date)}
                         </Link>
                         {row.location && (
-                          <p className="text-xs text-muted-foreground">{row.location}</p>
+                          <p className="text-xs text-muted-foreground truncate">{row.location}</p>
                         )}
                       </td>
                       <td className="py-3 px-2 hidden sm:table-cell text-muted-foreground text-xs">{row.team}</td>
