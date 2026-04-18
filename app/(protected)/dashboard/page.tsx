@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getRecentMatches } from "@/data/match";
 import { getUserStats } from "@/data/stats";
+import { getPendingRatingGames } from "@/data/ratings";
 import { currentUser } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +10,9 @@ import { MatchStatus } from "@prisma/client";
 import {
   Trophy,
   Target,
-  HandHelping,
   Activity,
-  AlertTriangle,
   CalendarCheck,
+  Star,
 } from "lucide-react";
 
 const statusLabel: Record<MatchStatus, string> = {
@@ -61,9 +61,10 @@ function StatCard({
 
 export default async function DashboardPage() {
   const user = await currentUser();
-  const [matches, stats] = await Promise.all([
+  const [matches, stats, pendingRatings] = await Promise.all([
     getRecentMatches(3),
     user?.id ? getUserStats(user.id) : null,
+    user?.id ? getPendingRatingGames(user.id) : [],
   ]);
 
   const firstName = user?.name?.split(" ")[0] ?? "Giocatore";
@@ -74,6 +75,27 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold">Ciao, {firstName} 👋</h1>
         <p className="text-muted-foreground text-sm">Benvenuto nella tua area personale</p>
       </div>
+
+      {pendingRatings.length > 0 && (
+        <section>
+          <Card className="border-amber-500/30 bg-amber-500/5">
+            <CardContent className="flex items-center justify-between py-4">
+              <div className="flex items-center gap-3">
+                <Star className="h-5 w-5 text-amber-400" />
+                <div>
+                  <p className="font-semibold text-amber-200">Valutazioni in sospeso</p>
+                  <p className="text-sm text-muted-foreground">
+                    Hai {pendingRatings.length} {pendingRatings.length === 1 ? "partita" : "partite"} da valutare
+                  </p>
+                </div>
+              </div>
+              <Button asChild size="sm" className="bg-amber-500 hover:bg-amber-400 text-black font-semibold">
+                <Link href={`/match/${pendingRatings[0].match_id}/rate`}>Vota ora</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       {stats?.nextMatch && (
         <section className="space-y-2">
@@ -113,21 +135,6 @@ export default async function DashboardPage() {
               icon={<Target className="h-4 w-4 text-green-500" />}
               label="Goal"
               value={stats.goals}
-            />
-            <StatCard
-              icon={<HandHelping className="h-4 w-4 text-blue-500" />}
-              label="Assist"
-              value={stats.assists}
-            />
-            <StatCard
-              icon={<AlertTriangle className="h-4 w-4 text-yellow-500" />}
-              label="Gialli"
-              value={stats.yellowCards}
-            />
-            <StatCard
-              icon={<AlertTriangle className="h-4 w-4 text-red-500" />}
-              label="Rossi"
-              value={stats.redCards}
             />
             {stats.matchesPlayed > 0 && (
               <StatCard

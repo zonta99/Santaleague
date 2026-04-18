@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MatchStatus } from "@prisma/client";
 import { JoinMatchButton } from "./_components/join-match-button";
+import { MatchCountdown } from "./_components/match-countdown";
 
 const statusLabel: Record<MatchStatus, string> = {
   SCHEDULED: "Programmata",
@@ -56,12 +57,18 @@ export default async function MatchListPage() {
                   <div className="flex items-center justify-between">
                     <Link href={`/match/${match.id}`} className="hover:underline">
                       <CardTitle className="text-base">
-                        {new Date(match.date).toLocaleDateString("it-IT", {
-                          weekday: "long",
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })}
+                        {match.status === "SCHEDULED" ? (
+                          <MatchCountdown date={match.date} />
+                        ) : (
+                          <span className="capitalize">
+                            {new Date(match.date).toLocaleDateString("it-IT", {
+                              weekday: "long",
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            })}
+                          </span>
+                        )}
                       </CardTitle>
                     </Link>
                     <Badge variant={statusVariant[match.status]}>

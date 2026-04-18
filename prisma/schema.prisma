@@ -20,9 +20,14 @@ model User {
   Game                  Game[]
   GameDetail            GameDetail[]
   Match                 Match[]
+  Season                Season[]
   TeamMember            TeamMember[]
   MatchParticipant      MatchParticipant[]
   twoFactorConfirmation TwoFactorConfirmation?
+  RatingGiven           GameRating[]           @relation("RatingGiven")
+  RatingReceived        GameRating[]           @relation("RatingReceived")
+  LevelFormulaUpdates   LevelFormula[]
+  UserBadge             UserBadge[]
 }
 
 model Account {
@@ -76,6 +81,19 @@ model TwoFactorConfirmation {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Season {
+  id          Int          @id @default(autoincrement())
+  name        String       @unique
+  start_date  DateTime     @db.Date
+  end_date    DateTime     @db.Date
+  status      SeasonStatus @default(ACTIVE)
+  champion_id String?
+  created_at  DateTime     @default(now())
+  Champion    User?        @relation(fields: [champion_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Match       Match[]
+  UserBadge   UserBadge[]
+}
+
 model Match {
   id               Int                @id @default(autoincrement())
   date             DateTime           @db.Date
@@ -83,12 +101,18 @@ model Match {
   status           MatchStatus        @default(SCHEDULED)
   location_id      Int?
   match_type       String             @default("normal")
+  season_id        Int?
   created_at       DateTime?          @default(now()) @db.Timestamptz(6)
   updated_at       DateTime?          @default(now()) @db.Timestamptz(6)
+  draft_locked       Boolean            @default(false)
+  team_balance_score Float?
+  num_teams          Int                @default(2)
+  players_per_team   Int                @default(5)
   DraftPick        DraftPick[]
   Game             Game[]
   Location         Location?          @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   User             User?              @relation(fields: [mvp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Season           Season?            @relation(fields: [season_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   MatchParticipant MatchParticipant[]
 }
 
@@ -113,6 +137,7 @@ model Team {
   DraftPick  DraftPick[]
   Team1      Game[]       @relation("Team1")
   Team2      Game[]       @relation("Team2")
+  WinnerTeam Game[]       @relation("WinnerTeam")
   GameDetail GameDetail[]
   TeamType   TeamType?    @relation(fields: [team_type], references: [id], onDelete: NoAction, onUpdate: NoAction)
   TeamMember TeamMember[]
@@ -129,8 +154,9 @@ model DraftPick {
   id         Int       @id @default(autoincrement())
   match_id   Int
   team_id    Int
-  pick_order Int
-  user_id    String
+  pick_order        Int
+  user_id           String
+  strength_at_draft Float?
   created_at DateTime? @default(now()) @db.Timestamptz(6)
   updated_at DateTime? @default(now()) @db.Timestamptz(6)
   Match      Match     @relation(fields: [match_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -140,18 +166,38 @@ model DraftPick {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Game {
-  id          Int          @id @default(autoincrement())
-  match_id    Int
-  game_number Int          @db.SmallInt
-  team1_id    Int?
-  team2_id    Int?
-  mvp_id      String?
-  status      MatchStatus  @default(SCHEDULED)
-  Match       Match        @relation(fields: [match_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  User        User?        @relation(fields: [mvp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  Team1       Team?        @relation("Team1", fields: [team1_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  Team2       Team?        @relation("Team2", fields: [team2_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  GameDetail  GameDetail[]
+  id                Int          @id @default(autoincrement())
+  match_id          Int
+  game_number       Int          @db.SmallInt
+  team1_id          Int?
+  team2_id          Int?
+  mvp_id            String?
+  winner_team_id    Int?
+  status            MatchStatus  @default(SCHEDULED)
+  rating_open       Boolean      @default(false)
+  rating_opened_at  DateTime?
+  Match             Match        @relation(fields: [match_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User              User?        @relation(fields: [mvp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Team1             Team?        @relation("Team1", fields: [team1_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Team2             Team?        @relation("Team2", fields: [team2_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  WinnerTeam        Team?        @relation("WinnerTeam", fields: [winner_team_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  GameDetail        GameDetail[]
+  GameRating        GameRating[]
+}
+
+model GameRating {
+  id              Int        @id @default(autoincrement())
+  game_id         Int
+  rater_id        String
+  rated_player_id String
+  score           Int
+  role            RatingRole
+  created_at      DateTime   @default(now())
+  Game            Game       @relation(fields: [game_id], references: [id], onDelete: Cascade)
+  Rater           User       @relation("RatingGiven", fields: [rater_id], references: [id], onDelete: Cascade)
+  RatedPlayer     User       @relation("RatingReceived", fields: [rated_player_id], references: [id], onDelete: Cascade)
+
+  @@unique([game_id, rater_id, rated_player_id, role])
 }
 
 model GameDetail {
@@ -189,7 +235,13 @@ model TeamType {
 
 enum UserRole {
   ADMIN
+  MODERATOR
   USER
+}
+
+enum SeasonStatus {
+  ACTIVE
+  COMPLETED
 }
 
 enum MatchStatus {
@@ -201,9 +253,48 @@ enum MatchStatus {
 
 enum GameEventType {
   Goal
-  Assist
   Penalty
-  YellowCard
-  RedCard
-  Substitution
+}
+
+enum RatingRole {
+  FIELD
+  GOALKEEPER
+}
+
+enum BadgeType {
+  SEASON
+  CAREER
+}
+
+model Badge {
+  id          String      @id @default(cuid())
+  key         String      @unique
+  name        String
+  description String
+  icon        String
+  type        BadgeType
+  UserBadge   UserBadge[]
+}
+
+model UserBadge {
+  id         String   @id @default(cuid())
+  user_id    String
+  badge_id   String
+  awarded_at DateTime @default(now())
+  season_id  Int?
+  User       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  Badge      Badge    @relation(fields: [badge_id], references: [id], onDelete: Cascade)
+  Season     Season?  @relation(fields: [season_id], references: [id], onDelete: SetNull)
+}
+
+model LevelFormula {
+  id           String   @id @default(cuid())
+  field_weight Float    @default(0.50)
+  win_weight   Float    @default(0.30)
+  goal_weight  Float    @default(0.20)
+  updated_at   DateTime @updatedAt
+  updated_by   String?
+  updater      User?    @relation(fields: [updated_by], references: [id], onDelete: SetNull)
+
+  @@map("level_formula")
 }

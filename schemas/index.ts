@@ -62,16 +62,33 @@ export const CreateMatchSchema = z.object({
   location_id: z.coerce.number().min(1, { message: "Campo obbligatorio" }),
   match_type: z.enum(["normal", "torneo"]),
   num_games: z.coerce.number().min(1).max(10),
+  num_teams: z.coerce.number().int().min(2).max(6),
+  players_per_team: z.coerce.number().int().min(1).max(15),
+});
+
+export const SeasonSchema = z.object({
+  name: z.string().min(1, { message: "Nome obbligatorio" }),
+  start_date: z.string().min(1, { message: "Data inizio obbligatoria" }),
+  end_date: z.string().min(1, { message: "Data fine obbligatoria" }),
 });
 
 export const GameDetailSchema = z.object({
   game_id: z.number(),
   match_id: z.number(),
-  event_type: z.enum(["Goal", "Assist", "Penalty", "YellowCard", "RedCard", "Substitution"]),
+  event_type: z.enum(["Goal", "Penalty"]),
   player_id: z.string().min(1, { message: "Seleziona un giocatore" }),
   team_id: z.number({ required_error: "Seleziona una squadra" }),
   minute: z.coerce.number().min(1).max(120).optional(),
 });
+
+export const LevelFormulaSchema = z.object({
+  field_weight: z.number().min(0).max(1),
+  win_weight: z.number().min(0).max(1),
+  goal_weight: z.number().min(0).max(1),
+}).refine(
+  (d) => Math.abs(d.field_weight + d.win_weight + d.goal_weight - 1) < 0.01,
+  { message: "I pesi devono sommare a 1.0 (100%)" }
+);
 
 export const RegisterSchema = z.object({
   email: z.string().email({

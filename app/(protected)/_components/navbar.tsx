@@ -15,8 +15,12 @@ export const Navbar = () => {
   const links = [
     { href: "/dashboard", label: "Home" },
     { href: "/match", label: "Partite" },
+    { href: "/leaderboard", label: "Classifica" },
+    { href: "/players", label: "Giocatori" },
     { href: "/settings", label: "Profilo" },
-    ...(role === UserRole.ADMIN ? [{ href: "/admin", label: "Admin" }] : []),
+    ...(role === UserRole.ADMIN || role === UserRole.MODERATOR
+      ? [{ href: "/admin", label: role === UserRole.ADMIN ? "Admin" : "Gestione" }]
+      : []),
   ];
 
   return (

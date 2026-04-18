@@ -43,6 +43,8 @@ export function CreateMatchForm({ locations }: Props) {
       location_id: 0,
       match_type: "normal",
       num_games: 1,
+      num_teams: 2,
+      players_per_team: 5,
     },
   });
 
@@ -145,6 +147,34 @@ export function CreateMatchForm({ locations }: Props) {
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="num_teams"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Squadre</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={2} max={6} disabled={isPending} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="players_per_team"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Giocatori per squadra</FormLabel>
+                    <FormControl>
+                      <Input type="number" min={1} max={15} disabled={isPending} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <Button type="submit" className="w-full" disabled={isPending}>
               Crea partita
             </Button>

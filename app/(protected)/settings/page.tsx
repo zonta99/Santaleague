@@ -7,13 +7,6 @@ import { useTransition, useState } from "react";
 import { useSession } from "next-auth/react";
 
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { SettingsSchema } from "@/schemas";
 import {
   Card,
@@ -35,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { FormError } from "@/components/form-error";
 import { FormSuccess } from "@/components/form-success";
+import { Badge } from "@/components/ui/badge";
 import { UserRole } from "@prisma/client";
 
 const SettingsPage = () => {
@@ -52,8 +46,7 @@ const SettingsPage = () => {
       newPassword: undefined,
       name: user?.name || undefined,
       email: user?.email || undefined,
-      role: user?.role || undefined,
-      isTwoFactorEnabled: user?.isTwoFactorEnabled || undefined,
+isTwoFactorEnabled: user?.isTwoFactorEnabled || undefined,
     }
   });
 
@@ -163,35 +156,20 @@ const SettingsPage = () => {
                   />
                 </>
               )}
-              <FormField
-                control={form.control}
-                name="role"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Role</FormLabel>
-                    <Select
-                      disabled={isPending}
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a role" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value={UserRole.ADMIN}>
-                          Admin
-                        </SelectItem>
-                        <SelectItem value={UserRole.USER}>
-                          User
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                <span className="text-sm font-medium">Role</span>
+                <Badge
+                  variant={
+                    user?.role === UserRole.ADMIN
+                      ? "destructive"
+                      : user?.role === UserRole.MODERATOR
+                      ? "secondary"
+                      : "outline"
+                  }
+                >
+                  {user?.role}
+                </Badge>
+              </div>
               {user?.isOAuth === false && (
                 <FormField
                   control={form.control}

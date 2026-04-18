@@ -6,12 +6,8 @@ import { toast } from "sonner";
 import { addGameDetail, deleteGameDetail } from "@/actions/game";
 
 const EVENTS = [
-  { key: "Goal",         label: "Gol",      icon: "⚽" },
-  { key: "Assist",       label: "Assist",   icon: "🅰️" },
-  { key: "YellowCard",   label: "Giallo",   icon: "🟡" },
-  { key: "RedCard",      label: "Rosso",    icon: "🔴" },
-  { key: "Penalty",      label: "Rigore",   icon: "🎯" },
-  { key: "Substitution", label: "Sost.",    icon: "🔄" },
+  { key: "Goal",    label: "Gol",    icon: "⚽" },
+  { key: "Penalty", label: "Rigore", icon: "🎯" },
 ] as const;
 
 const EVENT_LABEL: Record<string, string> = Object.fromEntries(

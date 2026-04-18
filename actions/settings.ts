@@ -69,11 +69,12 @@ export const settings = async (
     values.newPassword = undefined;
   }
 
+  // role changes are managed by admin only — strip it from self-service updates
+  const { role: _role, ...safeValues } = values;
+
   const updatedUser = await db.user.update({
     where: { id: dbUser.id },
-    data: {
-      ...values,
-    }
+    data: safeValues,
   });
 
   try {

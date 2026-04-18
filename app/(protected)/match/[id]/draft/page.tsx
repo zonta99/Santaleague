@@ -4,11 +4,12 @@ import { db } from "@/lib/db";
 import { currentRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users, ShieldHalf } from "lucide-react";
+import { ArrowLeft, Users } from "lucide-react";
 import { DraftActions } from "./_components/draft-actions";
-import { CaptainButton } from "./_components/captain-button";
+import { DraftBoard } from "./_components/draft-board";
+import { getPlayerLevel } from "@/data/stats";
+import { TierBadge } from "@/components/tier-badge";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -50,6 +51,17 @@ export default async function DraftPage({ params }: Props) {
   if (!match) notFound();
 
   const hasDraft = match.DraftPick.length > 0;
+  const isLocked = match.draft_locked;
+
+  // Fetch player levels for all participants
+  const participantUserIds = match.MatchParticipant.map((p) => p.user_id);
+  const levelResults = await Promise.all(
+    participantUserIds.map(async (uid) => {
+      const { level, tier } = await getPlayerLevel(uid);
+      return [uid, { level, tier }] as const;
+    })
+  );
+  const levelMap = new Map(levelResults);
 
   // Group draft picks by team
   const teamMap = new Map<number, { id: number; name: string; players: { id: string; name: string | null; isCaptain: boolean }[] }>();
@@ -89,45 +101,17 @@ export default async function DraftPage({ params }: Props) {
           <Users className="h-4 w-4" />
           <span>{match.MatchParticipant.length} partecipanti · {match.Game.length} game</span>
         </div>
-        <DraftActions matchId={matchId} hasDraft={hasDraft} />
+        <DraftActions matchId={matchId} hasDraft={hasDraft} isLocked={isLocked} />
       </div>
 
       {/* Draft result */}
       {hasDraft && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {teams.map((team, i) => (
-            <Card key={i} className={i === 0 ? "border-blue-500/40" : "border-red-500/40"}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ShieldHalf className={`h-4 w-4 ${i === 0 ? "text-blue-500" : "text-red-500"}`} />
-                  {team.name}
-                  <Badge variant="secondary" className="ml-auto">{team.players.length}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ol className="space-y-1.5">
-                  {team.players.map((p, idx) => (
-                    <li key={p.id} className="flex items-center gap-2 text-sm">
-                      <span className="text-muted-foreground w-5 text-right">{idx + 1}.</span>
-                      <span className="flex-1">{p.name ?? "—"}</span>
-                      {p.isCaptain && (
-                        <Badge variant="outline" className="text-yellow-500 border-yellow-500/40 text-xs px-1.5 py-0">
-                          C
-                        </Badge>
-                      )}
-                      <CaptainButton
-                        matchId={matchId}
-                        teamId={team.id}
-                        userId={p.id}
-                        isCaptain={p.isCaptain}
-                      />
-                    </li>
-                  ))}
-                </ol>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <DraftBoard
+          teams={teams}
+          levelMap={levelMap}
+          matchId={matchId}
+          isLocked={isLocked}
+        />
       )}
 
       {/* Participants list */}
@@ -145,7 +129,7 @@ export default async function DraftPage({ params }: Props) {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {match.MatchParticipant.map((p) => {
                 const pick = match.DraftPick.find((d) => d.user_id === p.user_id);
-                const teamIdx = pick ? teams.findIndex((t) => t.name === pick.Team.name) : -1;
+                const teamIdx = pick ? teams.findIndex((t) => t.id === pick.team_id) : -1;
                 return (
                   <div
                     key={p.user_id}
@@ -154,10 +138,13 @@ export default async function DraftPage({ params }: Props) {
                         ? "border-blue-500/30 bg-blue-500/5"
                         : teamIdx === 1
                         ? "border-red-500/30 bg-red-500/5"
+                        : teamIdx === 2
+                        ? "border-green-500/30 bg-green-500/5"
                         : "border-border"
                     }`}
                   >
-                    <span className="truncate">{p.User.name ?? "—"}</span>
+                    <span className="truncate flex-1">{p.User.name ?? "—"}</span>
+                    {(() => { const pl = levelMap.get(p.user_id); return pl ? <TierBadge tier={pl.tier} level={pl.level} /> : null; })()}
                   </div>
                 );
               })}

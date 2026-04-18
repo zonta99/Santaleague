@@ -40,6 +40,25 @@ export const getRecentMatches = async (take = 3) => {
 };
 
 
+const MONTH_LABELS = ["Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
+
+export const getMatchesPerMonth = async (seasonId?: number) => {
+  const matches = await db.match.findMany({
+    where: seasonId ? { season_id: seasonId } : undefined,
+    select: { date: true, status: true },
+  });
+
+  const buckets = MONTH_LABELS.map((month, i) => ({ month, monthIndex: i, completate: 0, programmate: 0 }));
+
+  for (const m of matches) {
+    const idx = new Date(m.date).getMonth();
+    if (m.status === "COMPLETED") buckets[idx].completate++;
+    else if (m.status === "SCHEDULED") buckets[idx].programmate++;
+  }
+
+  return buckets;
+};
+
 export const getMatchById = async (id: number): Promise<any> => {
     return  db.match.findFirst({
         select: {
@@ -48,6 +67,11 @@ export const getMatchById = async (id: number): Promise<any> => {
             status: true,
             match_type: true,
             mvp_id: true,
+            draft_locked: true,
+            season_id: true,
+            num_teams: true,
+            players_per_team: true,
+            Location: { select: { name: true } },
             DraftPick: {
                 select: {
                     user_id: true,
@@ -76,6 +100,9 @@ export const getMatchById = async (id: number): Promise<any> => {
                             logo: true,
                         },
                     },
+                    rating_open: true,
+                    status: true,
+                    winner_team_id: true,
                     GameDetail: {
                         orderBy: { minute: "asc" },
                         select: {
@@ -98,6 +125,15 @@ export const getMatchById = async (id: number): Promise<any> => {
                             },
                         },
                     },
+                    GameRating: {
+                        select: {
+                            rated_player_id: true,
+                            score: true,
+                            role: true,
+                            RatedPlayer: { select: { name: true, image: true } },
+                        },
+                    },
+                    WinnerTeam: { select: { id: true, name: true } },
                 },
             },
         },
