@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import type { Tier } from "@/data/stats";
 
 const TIER_COLORS: Record<Tier, string> = {
@@ -26,11 +26,14 @@ export function LevelHistoryChart({ data }: Props) {
             contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
             formatter={(value) => [typeof value === "number" ? value.toFixed(1) : value, "Livello"]}
           />
-          <Bar dataKey="level" radius={[4, 4, 0, 0]}>
-            {data.map((entry, i) => (
-              <Cell key={i} fill={TIER_COLORS[entry.tier]} />
-            ))}
-          </Bar>
+          <Bar
+            dataKey="level"
+            radius={[4, 4, 0, 0]}
+            shape={(props: any) => {
+              const { x, y, width, height, index } = props;
+              return <rect x={x} y={y} width={width} height={height} fill={TIER_COLORS[data[index].tier]} rx={4} ry={4} />;
+            }}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>

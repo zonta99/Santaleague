@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { currentUser, currentRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
-import { UserRole } from "@prisma/client";
 import { CreateMatchSchema } from "@/schemas";
 import { checkCareerBadgesForPlayer } from "@/actions/badges";
 import { getActiveSeason } from "@/data/season";

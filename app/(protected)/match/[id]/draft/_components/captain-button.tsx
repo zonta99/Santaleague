@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { setCaptain } from "@/actions/draft";

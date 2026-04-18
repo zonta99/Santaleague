@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { currentRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { getPlayerLevel } from "@/data/stats";
-import { snakeDraft, balanceDelta, teamStrength } from "@/lib/draft-algorithm";
+import { snakeDraft, balanceDelta } from "@/lib/draft-algorithm";
 
 const TEAM_NAMES = ["Bianchi", "Neri", "Verdi", "Rossi", "Blu", "Gialli"];
 

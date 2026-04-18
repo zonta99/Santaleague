@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { currentRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
-import { UserRole, GameEventType } from "@prisma/client";
+import { GameEventType } from "@prisma/client";
 import { GameDetailSchema } from "@/schemas";
 import * as z from "zod";
 import { checkCareerBadgesForPlayer, checkHatTrickForGame } from "@/actions/badges";

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { GameEventType, RatingRole } from "@prisma/client";
+import { GameEventType } from "@prisma/client";
 import { BADGE_DEFINITIONS } from "@/lib/badge-definitions";
 import { getLeaderboard, getPlayerLevel } from "@/data/stats";
 

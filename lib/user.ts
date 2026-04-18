@@ -1,5 +1,3 @@
-import { db } from "@/lib/db";
-import {auth} from "@/auth";
 import {currentUser} from "@/lib/auth";
 
 

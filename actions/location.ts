@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { currentRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
-import { UserRole } from "@prisma/client";
 import { LocationSchema } from "@/schemas";
 
 export const createLocation = async (values: z.infer<typeof LocationSchema>) => {

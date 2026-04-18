@@ -15,16 +15,14 @@ export async function BadgeDisplay({ userId }: { userId: string }) {
           const isRare = RARE_BADGE_KEYS.includes(ub.Badge.key as (typeof RARE_BADGE_KEYS)[number]);
           return (
             <Tooltip key={ub.id}>
-              <TooltipTrigger asChild>
-                <div
-                  className={cn(
-                    "flex items-center justify-center w-10 h-10 rounded-full text-xl cursor-default select-none",
-                    "bg-secondary border border-border",
-                    isRare && "ring-2 ring-amber-400 animate-pulse"
-                  )}
-                >
-                  {ub.Badge.icon}
-                </div>
+              <TooltipTrigger
+                className={cn(
+                  "flex items-center justify-center w-10 h-10 rounded-full text-xl cursor-default select-none",
+                  "bg-secondary border border-border",
+                  isRare && "ring-2 ring-amber-400 animate-pulse"
+                )}
+              >
+                {ub.Badge.icon}
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-48 text-center">
                 <p className="font-semibold">{ub.Badge.name}</p>
