@@ -9,11 +9,10 @@ export default async function LeaguesPage() {
   if (!user?.id) redirect("/auth/login");
 
   const memberships = await getUserLeagues(user.id);
-  if (memberships.length > 0) redirect("/dashboard");
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-md mx-auto">
-      <LeagueOnboarding />
+      <LeagueOnboarding memberships={memberships} />
     </div>
   );
 }

@@ -42,12 +42,13 @@ export default async function MatchDetailPage({ params }: Props) {
   const leagueId = match.Season?.league_id;
   const member = leagueId && userId ? await getLeagueMember(leagueId, userId) : null;
 
+  const isSiteAdmin = session?.user?.role === UserRole.ADMIN;
   if (leagueId) {
-    if (!userId || !member) notFound();
+    if (!userId || (!member && !isSiteAdmin)) notFound();
   }
 
   const isAdmin =
-    session?.user?.role === UserRole.ADMIN ||
+    isSiteAdmin ||
     member?.role === LeagueRole.OWNER ||
     member?.role === LeagueRole.MANAGER;
 

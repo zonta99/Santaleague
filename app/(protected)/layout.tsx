@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 import { currentUser } from "@/lib/auth";
 import { getActiveLeagueId, getActiveLeagueRole } from "@/lib/active-league";
@@ -13,6 +14,21 @@ interface ProtectedLayoutProps {
 }
 
 const ProtectedLayout = async ({ children }: ProtectedLayoutProps) => {
+  const hdrs = await headers();
+  const pathname = hdrs.get("x-pathname") ?? "";
+  const isLeaguePath = pathname.startsWith("/leagues");
+
+  // Leagues pages don't need a league context
+  if (isLeaguePath) {
+    return (
+      <div className="flex flex-col min-h-screen bg-background">
+        <main className="flex-1 flex flex-col items-center px-4 pb-20 md:pb-6 pt-6">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
   const [leagueId, leagueRole, user] = await Promise.all([
     getActiveLeagueId(),
     getActiveLeagueRole(),
@@ -21,7 +37,6 @@ const ProtectedLayout = async ({ children }: ProtectedLayoutProps) => {
 
   if (!leagueId || !user?.id) redirect("/leagues");
 
-  // Validate membership is still valid
   const member = await getLeagueMember(leagueId, user.id);
   if (!member) redirect("/leagues");
 

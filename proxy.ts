@@ -45,7 +45,10 @@ export default auth((req) => {
     ));
   }
 
-  // Inject league headers for protected routes
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", nextUrl.pathname);
+
+  // Inject league headers for protected routes (skip /leagues paths)
   if (isLoggedIn && !isAuthRoute && !isApiAuthRoute && !isLeaguePath) {
     const leagueCookie = req.cookies.get("active-league");
 
@@ -55,16 +58,14 @@ export default auth((req) => {
 
     try {
       const { leagueId, role } = JSON.parse(leagueCookie.value);
-      const requestHeaders = new Headers(req.headers);
       requestHeaders.set("x-league-id", leagueId ?? "");
       requestHeaders.set("x-league-role", role ?? "");
-      return NextResponse.next({ request: { headers: requestHeaders } });
     } catch {
       return Response.redirect(new URL("/leagues", nextUrl));
     }
   }
 
-  return null;
+  return NextResponse.next({ request: { headers: requestHeaders } });
 })
 
 export const config = {

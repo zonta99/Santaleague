@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Users } from "lucide-react";
+import { Shield, Users, ChevronRight } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createLeague, acceptInvite, setActiveLeagueAction } from "@/actions/league";
+import type { League, LeagueMember } from "@prisma/client";
 
-export function LeagueOnboarding() {
+type Membership = LeagueMember & { League: League };
+
+interface LeagueOnboardingProps {
+  memberships?: Membership[];
+}
+
+export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -46,12 +53,44 @@ export function LeagueOnboarding() {
   const autoSlug = (name: string) =>
     name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
+  const handleSelect = (leagueId: string) => {
+    startTransition(async () => {
+      await setActiveLeagueAction(leagueId);
+      router.push("/dashboard");
+    });
+  };
+
   return (
     <div className="w-full space-y-4">
       <div className="text-center space-y-1">
         <h1 className="text-2xl font-bold">Benvenuto su Santaleague</h1>
-        <p className="text-muted-foreground text-sm">Crea la tua lega o unisciti a una esistente</p>
+        <p className="text-muted-foreground text-sm">
+          {memberships.length > 0 ? "Seleziona una lega o creane una nuova" : "Crea la tua lega o unisciti a una esistente"}
+        </p>
       </div>
+
+      {memberships.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Le tue leghe</CardTitle>
+            <CardDescription>Seleziona una lega per entrare.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {memberships.map((m) => (
+              <Button
+                key={m.League.id}
+                variant="outline"
+                className="w-full justify-between"
+                onClick={() => handleSelect(m.League.id)}
+                disabled={isPending}
+              >
+                <span>{m.League.name}</span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="create">
         <TabsList className="w-full">
