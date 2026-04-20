@@ -2,17 +2,25 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { currentRole } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { canPerformLeagueAction } from "@/lib/league-auth";
 import { getPlayerLevel } from "@/data/stats";
 import { snakeDraft, balanceDelta } from "@/lib/draft-algorithm";
 import { createNotificationsForUsers } from "@/actions/notifications";
 
 const TEAM_NAMES = ["Bianchi", "Neri", "Verdi", "Rossi", "Blu", "Gialli"];
 
+async function resolveLeagueIdFromMatch(matchId: number): Promise<string> {
+  const match = await db.match.findUnique({
+    where: { id: matchId },
+    select: { Season: { select: { league_id: true } } },
+  });
+  return match?.Season?.league_id ?? "";
+}
+
 export const executeDraft = async (matchId: number) => {
-  const role = await currentRole();
-  if (!hasPermission(role, "executeDraft")) return { error: "Non autorizzato" };
+  const leagueId = await resolveLeagueIdFromMatch(matchId);
+  const allowed = await canPerformLeagueAction(leagueId, "executeDraft");
+  if (!allowed) return { error: "Non autorizzato" };
 
   const match = await db.match.findUnique({
     where: { id: matchId },
@@ -44,7 +52,7 @@ export const executeDraft = async (matchId: number) => {
   // Fetch level for each participant
   const participantsWithLevel = await Promise.all(
     match.MatchParticipant.map(async (p) => {
-      const { level } = await getPlayerLevel(p.user_id, match.season_id ?? undefined);
+      const { level } = await getPlayerLevel(p.user_id, leagueId, match.season_id ?? undefined);
       return { userId: p.user_id, level };
     })
   );
@@ -98,8 +106,9 @@ export const executeDraft = async (matchId: number) => {
 };
 
 export const lockDraft = async (matchId: number) => {
-  const role = await currentRole();
-  if (!hasPermission(role, "executeDraft")) return { error: "Non autorizzato" };
+  const leagueId = await resolveLeagueIdFromMatch(matchId);
+  const allowed = await canPerformLeagueAction(leagueId, "executeDraft");
+  if (!allowed) return { error: "Non autorizzato" };
 
   const match = await db.match.findUnique({ where: { id: matchId } });
   if (!match) return { error: "Partita non trovata" };
@@ -148,8 +157,9 @@ export const lockDraft = async (matchId: number) => {
 };
 
 export const movePlayer = async (matchId: number, userId: string, toTeamId: number) => {
-  const role = await currentRole();
-  if (!hasPermission(role, "executeDraft")) return { error: "Non autorizzato" };
+  const leagueId = await resolveLeagueIdFromMatch(matchId);
+  const allowed = await canPerformLeagueAction(leagueId, "executeDraft");
+  if (!allowed) return { error: "Non autorizzato" };
 
   const match = await db.match.findUnique({ where: { id: matchId } });
   if (!match) return { error: "Partita non trovata" };
@@ -179,8 +189,9 @@ export const movePlayer = async (matchId: number, userId: string, toTeamId: numb
 };
 
 export const setCaptain = async (matchId: number, teamId: number, userId: string) => {
-  const role = await currentRole();
-  if (!hasPermission(role, "executeDraft")) return { error: "Non autorizzato" };
+  const leagueId = await resolveLeagueIdFromMatch(matchId);
+  const allowed = await canPerformLeagueAction(leagueId, "executeDraft");
+  if (!allowed) return { error: "Non autorizzato" };
 
   await db.teamMember.updateMany({ where: { team_id: teamId }, data: { is_captain: false } });
 
@@ -195,8 +206,9 @@ export const setCaptain = async (matchId: number, teamId: number, userId: string
 };
 
 export const resetDraft = async (matchId: number) => {
-  const role = await currentRole();
-  if (!hasPermission(role, "executeDraft")) return { error: "Non autorizzato" };
+  const leagueId = await resolveLeagueIdFromMatch(matchId);
+  const allowed = await canPerformLeagueAction(leagueId, "executeDraft");
+  if (!allowed) return { error: "Non autorizzato" };
 
   const match = await db.match.findUnique({ where: { id: matchId } });
   if (!match) return { error: "Partita non trovata" };

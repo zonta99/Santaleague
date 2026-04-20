@@ -1,8 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { auth } from "@/auth";
 import { getSeasonById } from "@/data/season";
 import { getLeaderboard } from "@/data/stats";
+import { getLeagueMember } from "@/data/league";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,9 +21,16 @@ export default async function SeasonPage({ params }: { params: Promise<{ id: str
   const seasonId = parseInt(id);
   if (isNaN(seasonId)) notFound();
 
-  const [season, rows] = await Promise.all([getSeasonById(seasonId), getLeaderboard(seasonId)]);
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  const season = await getSeasonById(seasonId);
   if (!season) notFound();
 
+  const member = userId ? await getLeagueMember(season.league_id, userId) : null;
+  if (!member) notFound();
+
+  const rows = await getLeaderboard(season.league_id, seasonId);
   const podium = rows.slice(0, 3);
 
   return (
@@ -98,15 +107,9 @@ export default async function SeasonPage({ params }: { params: Promise<{ id: str
                 <tr className="border-b text-muted-foreground">
                   <th className="text-left py-3 pl-4 w-8">#</th>
                   <th className="text-left py-3 pl-2">Giocatore</th>
-                  <th className="text-center py-3 px-2">
-                    <Target className="h-3.5 w-3.5 inline text-green-500" />
-                  </th>
-                  <th className="text-center py-3 px-2">
-                    <TrendingUp className="h-3.5 w-3.5 inline text-blue-500" />
-                  </th>
-                  <th className="text-center py-3 px-2 hidden sm:table-cell">
-                    <Star className="h-3.5 w-3.5 inline text-amber-400" />
-                  </th>
+                  <th className="text-center py-3 px-2"><Target className="h-3.5 w-3.5 inline text-green-500" /></th>
+                  <th className="text-center py-3 px-2"><TrendingUp className="h-3.5 w-3.5 inline text-blue-500" /></th>
+                  <th className="text-center py-3 px-2 hidden sm:table-cell"><Star className="h-3.5 w-3.5 inline text-amber-400" /></th>
                   <th className="text-right py-3 pr-4">
                     <Trophy className="h-3.5 w-3.5 inline text-primary" />
                     <span className="ml-1">Pt</span>
@@ -115,10 +118,7 @@ export default async function SeasonPage({ params }: { params: Promise<{ id: str
               </thead>
               <tbody>
                 {rows.map((row, i) => (
-                  <tr
-                    key={row.user.id}
-                    className={`border-b last:border-0 hover:bg-accent transition-colors ${i < 3 ? "font-semibold" : ""}`}
-                  >
+                  <tr key={row.user.id} className={`border-b last:border-0 hover:bg-accent transition-colors ${i < 3 ? "font-semibold" : ""}`}>
                     <td className="py-3 pl-4 text-muted-foreground">{MEDAL[i] ?? i + 1}</td>
                     <td className="py-3 pl-2">
                       <Link href={`/player/${row.user.id}`} className="flex items-center gap-2 hover:underline">

@@ -56,6 +56,33 @@ export const sendNotificationEmail = async (
   }
 };
 
+export const sendLeagueInviteEmail = async (
+  email: string,
+  leagueName: string,
+  inviterName: string,
+  token: string
+) => {
+  const link = `${domain}/leagues/invite?token=${token}`;
+  try {
+    await resend.emails.send({
+      from: "info@santaleague.it",
+      to: email,
+      subject: `Sei invitato a ${leagueName} su Santaleague`,
+      html: `
+        <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px;background:#111;color:#fff;border-radius:8px">
+          <h2 style="margin:0 0 8px;color:#fff">Invito a ${leagueName}</h2>
+          <p style="margin:0 0 16px;color:#ccc"><strong>${inviterName}</strong> ti ha invitato a unirti alla lega <strong>${leagueName}</strong> su Santaleague.</p>
+          <a href="${link}" style="display:inline-block;padding:12px 24px;background:#fff;color:#000;border-radius:6px;text-decoration:none;font-weight:600">Accetta invito</a>
+          <hr style="border:none;border-top:1px solid #333;margin:20px 0"/>
+          <p style="margin:0;font-size:12px;color:#666">Il link scade tra 48 ore. Santaleague — non rispondere a questa email.</p>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error("sendLeagueInviteEmail error:", error);
+  }
+};
+
 export const sendVerificationEmail = async (
   email: string, 
   token: string

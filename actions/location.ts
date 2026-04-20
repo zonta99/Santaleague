@@ -4,19 +4,18 @@ import * as z from "zod";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/lib/db";
-import { currentRole } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { canPerformLeagueAction } from "@/lib/league-auth";
 import { LocationSchema } from "@/schemas";
 
-export const createLocation = async (values: z.infer<typeof LocationSchema>) => {
-  const role = await currentRole();
-  if (!hasPermission(role, "manageLocations")) return { error: "Non autorizzato" };
+export const createLocation = async (values: z.infer<typeof LocationSchema>, leagueId: string) => {
+  const allowed = await canPerformLeagueAction(leagueId, "manageLocations");
+  if (!allowed) return { error: "Non autorizzato" };
 
   const parsed = LocationSchema.safeParse(values);
   if (!parsed.success) return { error: "Dati non validi" };
 
   try {
-    await db.location.create({ data: parsed.data });
+    await db.location.create({ data: { ...parsed.data, league_id: leagueId } });
   } catch {
     return { error: "Nome già esistente" };
   }
@@ -25,9 +24,9 @@ export const createLocation = async (values: z.infer<typeof LocationSchema>) => 
   return { success: "Campo creato" };
 };
 
-export const updateLocation = async (id: number, values: z.infer<typeof LocationSchema>) => {
-  const role = await currentRole();
-  if (!hasPermission(role, "manageLocations")) return { error: "Non autorizzato" };
+export const updateLocation = async (id: number, values: z.infer<typeof LocationSchema>, leagueId: string) => {
+  const allowed = await canPerformLeagueAction(leagueId, "manageLocations");
+  if (!allowed) return { error: "Non autorizzato" };
 
   const parsed = LocationSchema.safeParse(values);
   if (!parsed.success) return { error: "Dati non validi" };
@@ -42,9 +41,9 @@ export const updateLocation = async (id: number, values: z.infer<typeof Location
   return { success: "Campo aggiornato" };
 };
 
-export const deleteLocation = async (id: number) => {
-  const role = await currentRole();
-  if (!hasPermission(role, "manageLocations")) return { error: "Non autorizzato" };
+export const deleteLocation = async (id: number, leagueId: string) => {
+  const allowed = await canPerformLeagueAction(leagueId, "manageLocations");
+  if (!allowed) return { error: "Non autorizzato" };
 
   const count = await db.match.count({ where: { location_id: id } });
   if (count > 0) return { error: "Campo in uso da una o più partite" };

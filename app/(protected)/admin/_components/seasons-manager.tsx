@@ -118,14 +118,14 @@ function SeasonForm({
   );
 }
 
-export function SeasonsManager({ seasons }: { seasons: Season[] }) {
+export function SeasonsManager({ seasons, leagueId }: { seasons: Season[]; leagueId: string }) {
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
   const handleCreate = (values: z.infer<typeof SeasonSchema>) => {
     startTransition(async () => {
-      const result = await createSeason(values);
+      const result = await createSeason(values, leagueId);
       if (result.success) { toast.success(result.success); setShowCreate(false); }
       if (result.error) toast.error(result.error);
     });

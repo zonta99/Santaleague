@@ -34,9 +34,8 @@ interface UsersTableProps {
   currentUserId: string;
 }
 
-const roleBadgeVariant: Record<UserRole, "destructive" | "secondary" | "outline"> = {
+const roleBadgeVariant: Record<UserRole, "destructive" | "outline"> = {
   ADMIN: "destructive",
-  MODERATOR: "secondary",
   USER: "outline",
 };
 

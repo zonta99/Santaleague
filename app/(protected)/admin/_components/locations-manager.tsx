@@ -33,6 +33,7 @@ type Location = { id: number; name: string; description: string | null; _count?:
 
 interface Props {
   locations: Location[];
+  leagueId: string;
 }
 
 function LocationForm({
@@ -91,14 +92,14 @@ function LocationForm({
   );
 }
 
-export function LocationsManager({ locations }: Props) {
+export function LocationsManager({ locations, leagueId }: Props) {
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
   const handleCreate = (values: z.infer<typeof LocationSchema>) => {
     startTransition(async () => {
-      const result = await createLocation(values);
+      const result = await createLocation(values, leagueId);
       if (result.success) { toast.success(result.success); setShowCreate(false); }
       if (result.error) toast.error(result.error);
     });
@@ -106,7 +107,7 @@ export function LocationsManager({ locations }: Props) {
 
   const handleUpdate = (id: number, values: z.infer<typeof LocationSchema>) => {
     startTransition(async () => {
-      const result = await updateLocation(id, values);
+      const result = await updateLocation(id, values, leagueId);
       if (result.success) { toast.success(result.success); setEditingId(null); }
       if (result.error) toast.error(result.error);
     });
@@ -114,7 +115,7 @@ export function LocationsManager({ locations }: Props) {
 
   const handleDelete = (id: number) => {
     startTransition(async () => {
-      const result = await deleteLocation(id);
+      const result = await deleteLocation(id, leagueId);
       if (result.success) toast.success(result.success);
       if (result.error) toast.error(result.error);
     });

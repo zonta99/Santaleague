@@ -46,7 +46,6 @@ type GameItem = {
   Team2: { id: number; name: string; logo?: string | null } | null;
   WinnerTeam?: { id: number; name: string } | null;
   GameDetail: GameDetailItem[];
-  GameRating: GameRatingItem[];
 };
 
 type TabKey = "info" | "partite" | "riepilogo";
@@ -54,6 +53,7 @@ type TabKey = "info" | "partite" | "riepilogo";
 interface Props {
   matchId: number;
   games: GameItem[];
+  matchRatings: GameRatingItem[];
   participants: Participant[];
   draftPicks: DraftPick[];
   defaultTab: TabKey;
@@ -80,6 +80,7 @@ function linkTabClass() {
 export function MatchHubTabs({
   matchId,
   games,
+  matchRatings,
   participants,
   draftPicks,
   defaultTab,
@@ -149,7 +150,7 @@ export function MatchHubTabs({
         />
       )}
       {activeTab === "riepilogo" && (
-        <TabRiepilogo games={games} />
+        <TabRiepilogo games={games} matchRatings={matchRatings} />
       )}
     </div>
   );

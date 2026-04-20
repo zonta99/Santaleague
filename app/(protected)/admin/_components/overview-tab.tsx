@@ -6,9 +6,9 @@ import { TopPlayersWidget } from "./top-players-widget";
 import { MatchCompletionRate } from "./match-completion-rate";
 import { ExportButton } from "./export-button";
 
-export async function OverviewTab({ seasonId }: { seasonId?: number }) {
+export async function OverviewTab({ seasonId, leagueId }: { seasonId?: number; leagueId: string }) {
   const [stats, monthData] = await Promise.all([
-    getAdminDashboardStats(seasonId),
+    getAdminDashboardStats(leagueId, seasonId),
     getMatchesPerMonth(seasonId),
   ]);
 

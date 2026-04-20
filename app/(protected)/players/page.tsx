@@ -1,8 +1,10 @@
 import { getLeaderboard } from "@/data/stats";
+import { getActiveLeagueId } from "@/lib/active-league";
 import { PlayersGrid } from "./_components/players-grid";
 
 export default async function PlayersPage() {
-  const players = await getLeaderboard();
+  const leagueId = await getActiveLeagueId();
+  const players = await getLeaderboard(leagueId!);
 
   return (
     <div className="w-full max-w-3xl space-y-6">

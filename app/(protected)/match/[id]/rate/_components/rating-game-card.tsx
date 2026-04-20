@@ -106,7 +106,7 @@ export function RatingGameCard({ game, matchId, currentUserId, isAdmin }: Props)
     }
 
     startTransition(async () => {
-      const res = await submitRatings(game.id, matchId, ratings);
+      const res = await submitRatings(matchId, ratings);
       if (res.error) toast.error(res.error);
       else toast.success(res.success);
     });
@@ -114,7 +114,7 @@ export function RatingGameCard({ game, matchId, currentUserId, isAdmin }: Props)
 
   const handleClose = () => {
     startClosing(async () => {
-      const res = await closeRatingWindow(game.id, matchId);
+      const res = await closeRatingWindow(matchId);
       if (res.error) toast.error(res.error);
       else toast.success(res.success);
     });

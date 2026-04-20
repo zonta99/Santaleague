@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 
-export const getAllMatches = async () => {
+export const getAllMatches = async (leagueId?: string) => {
   return db.match.findMany({
+    where: leagueId ? { Season: { league_id: leagueId } } : undefined,
     orderBy: { date: "desc" },
     select: {
       id: true,
@@ -25,8 +26,9 @@ export const getMatchParticipants = async (matchId: number) => {
   });
 };
 
-export const getRecentMatches = async (take = 3) => {
+export const getRecentMatches = async (take = 3, leagueId?: string) => {
   return db.match.findMany({
+    where: leagueId ? { Season: { league_id: leagueId } } : undefined,
     orderBy: { date: "desc" },
     take,
     select: {
@@ -71,6 +73,7 @@ export const getMatchById = async (id: number): Promise<any> => {
             season_id: true,
             num_teams: true,
             players_per_team: true,
+            Season: { select: { league_id: true } },
             Location: { select: { name: true } },
             DraftPick: {
                 select: {
@@ -124,15 +127,15 @@ export const getMatchById = async (id: number): Promise<any> => {
                             },
                         },
                     },
-                    GameRating: {
-                        select: {
-                            rated_player_id: true,
-                            score: true,
-                            role: true,
-                            RatedPlayer: { select: { name: true, image: true } },
-                        },
-                    },
                     WinnerTeam: { select: { id: true, name: true } },
+                },
+            },
+            MatchRating: {
+                select: {
+                    rated_player_id: true,
+                    score: true,
+                    role: true,
+                    RatedPlayer: { select: { name: true, image: true } },
                 },
             },
         },

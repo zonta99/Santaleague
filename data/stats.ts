@@ -27,8 +27,8 @@ function computeLevel(params: {
   return Math.min(10, Math.max(0, ratingPart + winPart + goalPart));
 }
 
-async function getFormulaWeights() {
-  const formula = await db.levelFormula.findFirst();
+async function getFormulaWeights(leagueId: string) {
+  const formula = await db.levelFormula.findUnique({ where: { league_id: leagueId } });
   return {
     field_weight: formula?.field_weight ?? 0.5,
     win_weight: formula?.win_weight ?? 0.3,
@@ -38,9 +38,12 @@ async function getFormulaWeights() {
 
 export const getPlayerLevel = async (
   userId: string,
+  leagueId: string,
   seasonId?: number
 ): Promise<{ level: number; tier: Tier }> => {
-  const matchFilter = seasonId ? { season_id: seasonId } : {};
+  const matchFilter = seasonId
+    ? { status: "COMPLETED" as const, season_id: seasonId }
+    : { status: "COMPLETED" as const, Season: { league_id: leagueId } };
 
   const picks = await db.draftPick.findMany({
     where: { user_id: userId, Match: matchFilter },
@@ -60,11 +63,11 @@ export const getPlayerLevel = async (
     db.gameDetail.count({
       where: { player_id: userId, event_type: GameEventType.Goal, Game: { Match: matchFilter } },
     }),
-    db.gameRating.aggregate({
-      where: { rated_player_id: userId, role: RatingRole.FIELD, Game: { Match: matchFilter } },
+    db.matchRating.aggregate({
+      where: { rated_player_id: userId, role: RatingRole.FIELD, Match: matchFilter },
       _avg: { score: true },
     }),
-    getFormulaWeights(),
+    getFormulaWeights(leagueId),
   ]);
 
   let wins = 0;
@@ -84,10 +87,10 @@ export const getPlayerLevel = async (
   return { level: Math.round(level * 10) / 10, tier: getTier(level) };
 };
 
-export const getLeaderboard = async (seasonId?: number) => {
+export const getLeaderboard = async (leagueId: string, seasonId?: number) => {
   const matchFilter = seasonId
     ? { status: "COMPLETED" as const, season_id: seasonId }
-    : { status: "COMPLETED" as const };
+    : { status: "COMPLETED" as const, Season: { league_id: leagueId } };
 
   const details = await db.gameDetail.findMany({
     where: {
@@ -101,12 +104,8 @@ export const getLeaderboard = async (seasonId?: number) => {
     },
   });
 
-  // Count wins and games_played per player
   const completedGames = await db.game.findMany({
-    where: {
-      status: "COMPLETED",
-      Match: matchFilter,
-    },
+    where: { status: "COMPLETED", Match: matchFilter },
     select: {
       winner_team_id: true,
       match_id: true,
@@ -118,11 +117,10 @@ export const getLeaderboard = async (seasonId?: number) => {
     },
   });
 
-  const weights = await getFormulaWeights();
+  const weights = await getFormulaWeights(leagueId);
 
-  // Fetch avg ratings per player
-  const ratings = await db.gameRating.findMany({
-    where: { Game: { Match: matchFilter } },
+  const ratings = await db.matchRating.findMany({
+    where: { Match: matchFilter },
     select: { rated_player_id: true, score: true, role: true },
   });
   const ratingMap = new Map<string, { fieldScores: number[]; gkScores: number[] }>();
@@ -147,7 +145,6 @@ export const getLeaderboard = async (seasonId?: number) => {
     goalMap.get(d.player_id)!.goals++;
   }
 
-  // Build win counts and games_played per user
   const winMap = new Map<string, number>();
   const gamesPlayedMap = new Map<string, number>();
   for (const game of completedGames) {
@@ -159,10 +156,8 @@ export const getLeaderboard = async (seasonId?: number) => {
     }
   }
 
-  // Merge: include players with goals or wins
   const allUserIds = new Set([...Array.from(goalMap.keys()), ...Array.from(winMap.keys())]);
 
-  // Fetch users not already in goalMap
   const missingIds = Array.from(allUserIds).filter((id) => !goalMap.has(id));
   if (missingIds.length > 0) {
     const users = await db.user.findMany({
@@ -203,10 +198,10 @@ export const getLeaderboard = async (seasonId?: number) => {
     .sort((a, b) => b.points - a.points);
 };
 
-export const getPlayerProfile = async (userId: string, seasonId?: number) => {
+export const getPlayerProfile = async (userId: string, leagueId: string, seasonId?: number) => {
   const matchFilter = seasonId
     ? { status: "COMPLETED" as const, season_id: seasonId }
-    : { status: "COMPLETED" as const };
+    : { status: "COMPLETED" as const, Season: { league_id: leagueId } };
 
   const [user, goalDetails, draftHistory] = await Promise.all([
     db.user.findUnique({ where: { id: userId }, select: { id: true, name: true, image: true } }),
@@ -219,7 +214,7 @@ export const getPlayerProfile = async (userId: string, seasonId?: number) => {
       select: { event_type: true, Game: { select: { match_id: true } } },
     }),
     db.draftPick.findMany({
-      where: { user_id: userId, Match: seasonId ? { season_id: seasonId } : undefined },
+      where: { user_id: userId, Match: matchFilter },
       select: {
         team_id: true,
         Match: {
@@ -237,11 +232,11 @@ export const getPlayerProfile = async (userId: string, seasonId?: number) => {
                   where: { player_id: userId, event_type: GameEventType.Goal },
                   select: { event_type: true },
                 },
-                GameRating: {
-                  where: { rated_player_id: userId },
-                  select: { score: true, role: true },
-                },
               },
+            },
+            MatchRating: {
+              where: { rated_player_id: userId },
+              select: { score: true, role: true },
             },
           },
         },
@@ -258,7 +253,7 @@ export const getPlayerProfile = async (userId: string, seasonId?: number) => {
     const wins = m.Game.filter(
       (g) => g.status === "COMPLETED" && g.winner_team_id === team_id
     ).length;
-    const matchRatings = m.Game.flatMap((g) => g.GameRating);
+    const matchRatings = m.MatchRating;
     const matchFieldScores = matchRatings.filter((r) => r.role === RatingRole.FIELD).map((r) => r.score);
     const matchGkScores = matchRatings.filter((r) => r.role === RatingRole.GOALKEEPER).map((r) => r.score);
     return {
@@ -278,26 +273,22 @@ export const getPlayerProfile = async (userId: string, seasonId?: number) => {
   const goals = goalDetails.length;
   const wins = matchRows.reduce((sum, r) => sum + r.wins, 0);
 
-  // Rating trend: last 10 rated games (oldest first for chart)
   const ratingTrend = draftHistory
-    .flatMap(({ Match: m }) =>
-      m.Game
-        .filter((g) => g.GameRating.length > 0)
-        .map((g) => ({
-          date: m.date,
-          avgRating: Math.round(avg(g.GameRating.map((r) => r.score)) * 10) / 10,
-        }))
-    )
+    .map(({ Match: m }) => {
+      const fieldScores = m.MatchRating.filter((r) => r.role === RatingRole.FIELD).map((r) => r.score);
+      return fieldScores.length ? { date: m.date, avgRating: Math.round(avg(fieldScores) * 10) / 10 } : null;
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
     .slice(0, 10)
     .reverse();
 
-  const allRatings = draftHistory.flatMap(({ Match: m }) => m.Game.flatMap((g) => g.GameRating));
+  const allRatings = draftHistory.flatMap(({ Match: m }) => m.MatchRating);
   const fieldScores = allRatings.filter((r) => r.role === RatingRole.FIELD).map((r) => r.score);
   const gkScores = allRatings.filter((r) => r.role === RatingRole.GOALKEEPER).map((r) => r.score);
   const avgFieldRating = fieldScores.length ? avg(fieldScores) : null;
   const avgGkRating = gkScores.length ? avg(gkScores) : null;
 
-  const { level, tier } = await getPlayerLevel(userId, seasonId);
+  const { level, tier } = await getPlayerLevel(userId, leagueId, seasonId);
 
   return {
     user,
@@ -344,24 +335,26 @@ export const getHeadToHead = async (userId: string, opponentId: string) => {
   return { total: sharedMatchIds.length, sameTeam, opposing, userWins };
 };
 
-export const getAdminDashboardStats = async (seasonId?: number) => {
-  const matchFilter = seasonId ? { season_id: seasonId } : {};
-  const completedFilter = { ...matchFilter, status: "COMPLETED" as const };
+export const getAdminDashboardStats = async (leagueId: string, seasonId?: number) => {
+  const leagueFilter = seasonId
+    ? { season_id: seasonId }
+    : { Season: { league_id: leagueId } };
+  const completedFilter = { ...leagueFilter, status: "COMPLETED" as const };
 
   const [totalPlayers, completedMatches, scheduledMatches, totalMatches, goalsCount, ratingAgg, leaderboard] =
     await Promise.all([
-      db.user.count(),
+      db.leagueMember.count({ where: { league_id: leagueId } }),
       db.match.count({ where: completedFilter }),
-      db.match.count({ where: { ...matchFilter, status: "SCHEDULED" } }),
-      db.match.count({ where: matchFilter }),
+      db.match.count({ where: { ...leagueFilter, status: "SCHEDULED" } }),
+      db.match.count({ where: leagueFilter }),
       db.gameDetail.count({
         where: { event_type: GameEventType.Goal, Game: { Match: completedFilter } },
       }),
-      db.gameRating.aggregate({
-        where: { Game: { Match: completedFilter } },
+      db.matchRating.aggregate({
+        where: { Match: completedFilter },
         _avg: { score: true },
       }),
-      getLeaderboard(seasonId),
+      getLeaderboard(leagueId, seasonId),
     ]);
 
   return {
@@ -375,13 +368,22 @@ export const getAdminDashboardStats = async (seasonId?: number) => {
   };
 };
 
-export const getUserStats = async (userId: string) => {
+export const getUserStats = async (userId: string, leagueId: string) => {
   const [matchesPlayed, goals, nextMatch] = await Promise.all([
-    db.matchParticipant.count({ where: { user_id: userId } }),
-    db.gameDetail.count({ where: { player_id: userId, event_type: GameEventType.Goal } }),
+    db.matchParticipant.count({
+      where: { user_id: userId, Match: { Season: { league_id: leagueId } } },
+    }),
+    db.gameDetail.count({
+      where: {
+        player_id: userId,
+        event_type: GameEventType.Goal,
+        Game: { Match: { Season: { league_id: leagueId } } },
+      },
+    }),
     db.match.findFirst({
       where: {
         status: "SCHEDULED",
+        Season: { league_id: leagueId },
         MatchParticipant: { some: { user_id: userId } },
       },
       orderBy: { date: "asc" },

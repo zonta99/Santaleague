@@ -198,13 +198,7 @@ isTwoFactorEnabled: user?.isTwoFactorEnabled || undefined,
               <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
                 <span className="text-sm font-medium">Role</span>
                 <Badge
-                  variant={
-                    user?.role === UserRole.ADMIN
-                      ? "destructive"
-                      : user?.role === UserRole.MODERATOR
-                      ? "secondary"
-                      : "outline"
-                  }
+                  variant={user?.role === UserRole.ADMIN ? "destructive" : "outline"}
                 >
                   {user?.role}
                 </Badge>

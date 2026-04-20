@@ -6,7 +6,8 @@ import { Home, Swords, User, ShieldCheck, Trophy, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentRole } from "@/hooks/use-current-role";
 import { useNotifications } from "@/hooks/use-notifications";
-import { UserRole } from "@prisma/client";
+import { UserRole, LeagueRole } from "@prisma/client";
+import { useLeague } from "@/components/league/league-provider";
 
 const baseLinks = [
   { href: "/dashboard", label: "Home", Icon: Home },
@@ -19,14 +20,20 @@ const baseLinks = [
 export function MobileNavbar() {
   const pathname = usePathname();
   const role = useCurrentRole();
+  const { role: leagueRole } = useLeague();
   const { unreadCount } = useNotifications();
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
 
+  const showAdmin =
+    role === UserRole.ADMIN ||
+    leagueRole === LeagueRole.OWNER ||
+    leagueRole === LeagueRole.MANAGER;
+
   const links = [
     ...baseLinks,
-    ...(role === UserRole.ADMIN || role === UserRole.MODERATOR
+    ...(showAdmin
       ? [{ href: "/admin", label: role === UserRole.ADMIN ? "Admin" : "Gestione", Icon: ShieldCheck }]
       : []),
   ];

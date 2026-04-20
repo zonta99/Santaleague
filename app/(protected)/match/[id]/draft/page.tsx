@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { db } from "@/lib/db";
 import { currentRole } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { ArrowLeft, Users } from "lucide-react";
 import { DraftActions } from "./_components/draft-actions";
 import { DraftBoard } from "./_components/draft-board";
 import { getPlayerLevel } from "@/data/stats";
+import { db } from "@/lib/db";
 import { TierBadge } from "@/components/tier-badge";
 
 interface Props {
@@ -54,10 +54,14 @@ export default async function DraftPage({ params }: Props) {
   const isLocked = match.draft_locked;
 
   // Fetch player levels for all participants
+  const season = match.season_id
+    ? await db.season.findUnique({ where: { id: match.season_id }, select: { league_id: true } })
+    : null;
+  const leagueId = season?.league_id ?? "";
   const participantUserIds = match.MatchParticipant.map((p) => p.user_id);
   const levelResults = await Promise.all(
     participantUserIds.map(async (uid) => {
-      const { level, tier } = await getPlayerLevel(uid);
+      const { level, tier } = await getPlayerLevel(uid, leagueId);
       return [uid, { level, tier }] as const;
     })
   );

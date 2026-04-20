@@ -7,16 +7,17 @@ import { Target, TrendingUp, Trophy, BarChart2 } from "lucide-react";
 
 interface Props {
   userId: string;
+  leagueId: string;
 }
 
-export async function SeasonBreakdown({ userId }: Props) {
-  const seasons = await getAllSeasons();
+export async function SeasonBreakdown({ userId, leagueId }: Props) {
+  const seasons = await getAllSeasons(leagueId);
   const completed = seasons.filter((s) => s.status === "COMPLETED");
 
   if (completed.length === 0) return null;
 
   const profiles = await Promise.all(
-    completed.map((s) => getPlayerProfile(userId, s.id).then((p) => ({ season: s, ...p })))
+    completed.map((s) => getPlayerProfile(userId, leagueId, s.id).then((p) => ({ season: s, ...p })))
   );
 
   const played = profiles.filter((p) => p.matchRows.length > 0);

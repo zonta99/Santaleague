@@ -2,8 +2,6 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserRole } from "@prisma/client";
-
 const ALL_TABS = [
   { value: "overview", label: "Panoramica" },
   { value: "matches", label: "Partite" },
@@ -13,16 +11,16 @@ const ALL_TABS = [
 ] as const;
 
 interface AdminTabsProps {
-  role: UserRole;
+  isGlobalAdmin: boolean;
   children: React.ReactNode;
 }
 
-export function AdminTabs({ role, children }: AdminTabsProps) {
+export function AdminTabs({ isGlobalAdmin, children }: AdminTabsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const current = searchParams.get("tab") ?? "overview";
 
-  const tabs = ALL_TABS.filter((t) => !("adminOnly" in t && t.adminOnly) || role === UserRole.ADMIN);
+  const tabs = ALL_TABS.filter((t) => !("adminOnly" in t && t.adminOnly) || isGlobalAdmin);
 
   return (
     <Tabs value={current} onValueChange={(v) => router.push(`?tab=${v}`)}>

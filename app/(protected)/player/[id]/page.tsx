@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { getActiveLeagueId } from "@/lib/active-league";
 import { notFound } from "next/navigation";
 import { getPlayerProfile, getPlayerLevel, getLeaderboard } from "@/data/stats";
 import { getAllSeasons, getActiveSeason, getPlayerChampionships } from "@/data/season";
@@ -49,23 +50,22 @@ export default async function PlayerProfilePage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ season?: string }>;
 }) {
-  const { id } = await params;
-  const { season } = await searchParams;
+  const [{ id }, { season }, leagueId] = await Promise.all([params, searchParams, getActiveLeagueId()]);
 
   const [seasons, activeSeason, championships, leaderboardRows] = await Promise.all([
-    getAllSeasons(),
-    getActiveSeason(),
+    getAllSeasons(leagueId!),
+    getActiveSeason(leagueId!),
     getPlayerChampionships(id),
-    getLeaderboard(),
+    getLeaderboard(leagueId!),
   ]);
   const seasonId = season ? parseInt(season) : undefined;
 
-  const profile = await getPlayerProfile(id, seasonId);
+  const profile = await getPlayerProfile(id, leagueId!, seasonId);
 
   const completedSeasons = seasons.filter((s) => s.status === "COMPLETED");
   const levelHistory = await Promise.all(
     completedSeasons.map(async (s) => {
-      const { level, tier } = await getPlayerLevel(id, s.id);
+      const { level, tier } = await getPlayerLevel(id, leagueId!, s.id);
       return { season: s.name, level, tier };
     })
   );
@@ -76,9 +76,7 @@ export default async function PlayerProfilePage({
     ? (seasons.find((s) => s.id === seasonId)?.name ?? "Stagione")
     : "Tutte le stagioni";
 
-  const otherPlayers = leaderboardRows
-    .map((r) => r.user)
-    .filter((u) => u.id !== id);
+  const otherPlayers = leaderboardRows.map((r) => r.user).filter((u) => u.id !== id);
 
   return (
     <div className="w-full max-w-3xl space-y-6">
@@ -170,7 +168,7 @@ export default async function PlayerProfilePage({
         <BadgeDisplay userId={id} />
       </section>
 
-      <SeasonBreakdown userId={id} />
+      <SeasonBreakdown userId={id} leagueId={leagueId!} />
 
       <HeadToHead userId={id} allPlayers={otherPlayers} />
 
@@ -186,15 +184,9 @@ export default async function PlayerProfilePage({
                   <tr className="border-b text-muted-foreground">
                     <th className="text-left py-3 pl-4">Data</th>
                     <th className="text-left py-3 px-2 hidden sm:table-cell">Team</th>
-                    <th className="text-center py-3 px-2">
-                      <Target className="h-3.5 w-3.5 inline text-green-500" />
-                    </th>
-                    <th className="text-center py-3 px-2">
-                      <TrendingUp className="h-3.5 w-3.5 inline text-blue-500" />
-                    </th>
-                    <th className="text-center py-3 px-2 hidden sm:table-cell">
-                      <BarChart2 className="h-3.5 w-3.5 inline text-purple-400" />
-                    </th>
+                    <th className="text-center py-3 px-2"><Target className="h-3.5 w-3.5 inline text-green-500" /></th>
+                    <th className="text-center py-3 px-2"><TrendingUp className="h-3.5 w-3.5 inline text-blue-500" /></th>
+                    <th className="text-center py-3 px-2 hidden sm:table-cell"><BarChart2 className="h-3.5 w-3.5 inline text-purple-400" /></th>
                     <th className="text-right py-3 pr-4">Pt</th>
                   </tr>
                 </thead>
@@ -205,9 +197,7 @@ export default async function PlayerProfilePage({
                         <Link href={`/match/${row.matchId}`} className="hover:underline block truncate text-xs sm:text-sm">
                           {formatDate(row.date)}
                         </Link>
-                        {row.location && (
-                          <p className="text-xs text-muted-foreground truncate">{row.location}</p>
-                        )}
+                        {row.location && <p className="text-xs text-muted-foreground truncate">{row.location}</p>}
                       </td>
                       <td className="py-3 px-2 hidden sm:table-cell text-muted-foreground text-xs">{row.team}</td>
                       <td className="text-center py-3 px-2">{row.goals}</td>

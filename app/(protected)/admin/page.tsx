@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { UserRole } from "@prisma/client";
-import { currentRole } from "@/lib/auth";
+import { UserRole, LeagueRole } from "@prisma/client";
+import { currentRole, currentUser } from "@/lib/auth";
+import { getActiveLeagueId } from "@/lib/active-league";
 import { getActiveSeason } from "@/data/season";
+import { getLeagueMember } from "@/data/league";
 import { AdminTabs } from "./_components/admin-tabs";
 import { OverviewTab } from "./_components/overview-tab";
 import { MatchesTab } from "./_components/matches-tab";
@@ -15,30 +17,34 @@ interface AdminPageProps {
 }
 
 const AdminPage = async ({ searchParams }: AdminPageProps) => {
-  const role = await currentRole();
-  if (!role || (role !== UserRole.ADMIN && role !== UserRole.MODERATOR)) {
-    redirect("/dashboard");
-  }
-
+  const [role, user, leagueId] = await Promise.all([currentRole(), currentUser(), getActiveLeagueId()]);
   const { tab } = await searchParams;
+
+  const isGlobalAdmin = role === UserRole.ADMIN;
+  const leagueMember = leagueId && user?.id ? await getLeagueMember(leagueId!, user.id) : null;
+  const isLeagueAdmin =
+    leagueMember?.role === LeagueRole.OWNER || leagueMember?.role === LeagueRole.MANAGER;
+
+  if (!isGlobalAdmin && !isLeagueAdmin) redirect("/dashboard");
+
   const activeTab = tab ?? "overview";
 
   // admin-only tabs
-  if ((activeTab === "users" || activeTab === "settings") && role !== UserRole.ADMIN) {
+  if ((activeTab === "users" || activeTab === "settings") && !isGlobalAdmin) {
     redirect("/admin?tab=overview");
   }
 
-  const activeSeason = await getActiveSeason();
+  const activeSeason = leagueId ? await getActiveSeason(leagueId!) : undefined;
 
   return (
     <div className="w-full max-w-4xl space-y-4">
-      <h1 className="text-2xl font-bold">{role === UserRole.ADMIN ? "Admin" : "Gestione"}</h1>
+      <h1 className="text-2xl font-bold">{isGlobalAdmin ? "Admin" : "Gestione"}</h1>
 
       <Suspense fallback={null}>
-        <AdminTabs role={role}>
-          {activeTab === "overview" && <OverviewTab seasonId={activeSeason?.id} />}
-          {activeTab === "matches" && <MatchesTab />}
-          {activeTab === "seasons" && <SeasonsTab />}
+        <AdminTabs isGlobalAdmin={isGlobalAdmin}>
+          {activeTab === "overview" && <OverviewTab seasonId={activeSeason?.id} leagueId={leagueId!} />}
+          {activeTab === "matches" && <MatchesTab leagueId={leagueId!} />}
+          {activeTab === "seasons" && <SeasonsTab leagueId={leagueId!} />}
           {activeTab === "users" && role === UserRole.ADMIN && <UsersTab />}
           {activeTab === "settings" && role === UserRole.ADMIN && <SettingsTab />}
         </AdminTabs>

@@ -31,9 +31,10 @@ type Location = { id: number; name: string };
 
 interface Props {
   locations: Location[];
+  leagueId: string;
 }
 
-export function CreateMatchForm({ locations }: Props) {
+export function CreateMatchForm({ locations, leagueId }: Props) {
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<z.infer<typeof CreateMatchSchema>>({
@@ -50,7 +51,7 @@ export function CreateMatchForm({ locations }: Props) {
 
   const onSubmit = (values: z.infer<typeof CreateMatchSchema>) => {
     startTransition(async () => {
-      const result = await createMatch(values);
+      const result = await createMatch(values, leagueId);
       if (result.success) {
         toast.success(result.success);
         form.reset();

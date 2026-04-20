@@ -25,11 +25,11 @@ type GameItem = {
   Team2: { id: number; name: string } | null;
   WinnerTeam?: { id: number; name: string } | null;
   GameDetail: GameDetailItem[];
-  GameRating: GameRatingItem[];
 };
 
 interface Props {
   games: GameItem[];
+  matchRatings: GameRatingItem[];
 }
 
 function PlayerAvatar({ name, image, size = 28 }: { name: string | null; image: string | null; size?: number }) {
@@ -42,7 +42,7 @@ function PlayerAvatar({ name, image, size = 28 }: { name: string | null; image: 
   );
 }
 
-export function TabRiepilogo({ games }: Props) {
+export function TabRiepilogo({ games, matchRatings }: Props) {
   // Per-game results
   const gameResults = games.map((game) => {
     const t1Goals = game.GameDetail.filter((d) => d.event_type === "Goal" && d.team_id === game.team1_id).length;
@@ -71,13 +71,11 @@ export function TabRiepilogo({ games }: Props) {
 
   // Best rated (FIELD role, avg score, at least 1 rating)
   const ratingMap = new Map<string, { name: string | null; image: string | null; total: number; count: number }>();
-  for (const g of games) {
-    for (const r of g.GameRating) {
-      if (r.role === "FIELD") {
-        const prev = ratingMap.get(r.rated_player_id);
-        if (prev) { prev.total += r.score; prev.count++; }
-        else ratingMap.set(r.rated_player_id, { name: r.RatedPlayer?.name ?? null, image: r.RatedPlayer?.image ?? null, total: r.score, count: 1 });
-      }
+  for (const r of matchRatings) {
+    if (r.role === "FIELD") {
+      const prev = ratingMap.get(r.rated_player_id);
+      if (prev) { prev.total += r.score; prev.count++; }
+      else ratingMap.set(r.rated_player_id, { name: r.RatedPlayer?.name ?? null, image: r.RatedPlayer?.image ?? null, total: r.score, count: 1 });
     }
   }
   const bestRated = ratingMap.size > 0

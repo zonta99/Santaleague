@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 
-export const getAllSeasons = async () => {
+export const getAllSeasons = async (leagueId?: string) => {
   return db.season.findMany({
+    where: leagueId ? { league_id: leagueId } : undefined,
     orderBy: { start_date: "desc" },
     select: {
       id: true,
@@ -10,15 +11,16 @@ export const getAllSeasons = async () => {
       end_date: true,
       status: true,
       champion_id: true,
+      league_id: true,
       Champion: { select: { name: true } },
     },
   });
 };
 
-export const getActiveSeason = async () => {
+export const getActiveSeason = async (leagueId?: string) => {
   return db.season.findFirst({
-    where: { status: "ACTIVE" },
-    select: { id: true, name: true },
+    where: { status: "ACTIVE", ...(leagueId ? { league_id: leagueId } : {}) },
+    select: { id: true, name: true, league_id: true },
   });
 };
 
@@ -40,6 +42,7 @@ export const getSeasonById = async (id: number) => {
       end_date: true,
       status: true,
       champion_id: true,
+      league_id: true,
       Champion: { select: { id: true, name: true, image: true } },
     },
   });

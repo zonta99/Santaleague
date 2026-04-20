@@ -4,22 +4,23 @@ import * as z from "zod";
 import { revalidatePath } from "next/cache";
 
 import { db } from "@/lib/db";
-import { currentUser, currentRole } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { currentUser } from "@/lib/auth";
+import { canPerformLeagueAction } from "@/lib/league-auth";
+import { getLeagueMember } from "@/data/league";
 import { CreateMatchSchema } from "@/schemas";
 import { checkCareerBadgesForPlayer } from "@/actions/badges";
 import { createNotificationsForUsers } from "@/actions/notifications";
 import { getActiveSeason } from "@/data/season";
 
-export const createMatch = async (values: z.infer<typeof CreateMatchSchema>) => {
-  const role = await currentRole();
-  if (!hasPermission(role, "createMatch")) return { error: "Non autorizzato" };
+export const createMatch = async (values: z.infer<typeof CreateMatchSchema>, leagueId: string) => {
+  const allowed = await canPerformLeagueAction(leagueId, "createMatch");
+  if (!allowed) return { error: "Non autorizzato" };
 
   const parsed = CreateMatchSchema.safeParse(values);
   if (!parsed.success) return { error: "Dati non validi" };
 
   const { date, location_id, match_type, num_games, num_teams, players_per_team } = parsed.data;
-  const activeSeason = await getActiveSeason();
+  const activeSeason = await getActiveSeason(leagueId);
 
   const match = await db.match.create({
     data: {
@@ -39,9 +40,12 @@ export const createMatch = async (values: z.infer<typeof CreateMatchSchema>) => 
     },
   });
 
-  const allUsers = await db.user.findMany({ select: { id: true } });
+  const leagueMembers = await db.leagueMember.findMany({
+    where: { league_id: leagueId },
+    select: { user_id: true },
+  });
   await createNotificationsForUsers(
-    allUsers.map((u) => u.id),
+    leagueMembers.map((u) => u.user_id),
     "MATCH_SCHEDULED",
     "Nuova partita programmata",
     `È stata programmata una nuova partita per il ${new Date(date).toLocaleDateString("it-IT")}.`,
@@ -57,9 +61,17 @@ export const joinMatch = async (matchId: number) => {
   const user = await currentUser();
   if (!user?.id) return { error: "Non autenticato" };
 
-  const match = await db.match.findUnique({ where: { id: matchId } });
+  const match = await db.match.findUnique({
+    where: { id: matchId },
+    select: { status: true, Season: { select: { league_id: true } } },
+  });
   if (!match) return { error: "Partita non trovata" };
   if (match.status !== "SCHEDULED") return { error: "Non è possibile iscriversi a questa partita" };
+
+  if (match.Season?.league_id) {
+    const member = await getLeagueMember(match.Season.league_id, user.id);
+    if (!member) return { error: "Non sei membro di questa lega" };
+  }
 
   try {
     await db.matchParticipant.create({
@@ -74,8 +86,15 @@ export const joinMatch = async (matchId: number) => {
 };
 
 export const updateMatchStatus = async (matchId: number, status: "SCHEDULED" | "ONGOING" | "COMPLETED" | "CANCELED") => {
-  const role = await currentRole();
-  if (!hasPermission(role, "updateMatchStatus")) return { error: "Non autorizzato" };
+  const match = await db.match.findUnique({
+    where: { id: matchId },
+    select: { Season: { select: { league_id: true } } },
+  });
+  if (!match) return { error: "Partita non trovata" };
+
+  const leagueId = match.Season?.league_id ?? "";
+  const allowed = await canPerformLeagueAction(leagueId, "updateMatchStatus");
+  if (!allowed) return { error: "Non autorizzato" };
 
   await db.match.update({ where: { id: matchId }, data: { status } });
 
@@ -103,7 +122,7 @@ export const updateMatchStatus = async (matchId: number, status: "SCHEDULED" | "
       where: { match_id: matchId },
       select: { user_id: true },
     });
-    await Promise.all(participants.map((p) => checkCareerBadgesForPlayer(p.user_id)));
+    await Promise.all(participants.map((p) => checkCareerBadgesForPlayer(p.user_id, leagueId)));
     await createNotificationsForUsers(
       participants.map((p) => p.user_id),
       "MATCH_COMPLETED",

@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
+import { UserRole, LeagueRole } from "@prisma/client";
+import { getLeagueMember } from "@/data/league";
 import { RatingMatchCard } from "./_components/rating-match-card";
 import { Star, CheckCircle } from "lucide-react";
 import Link from "next/link";
@@ -20,8 +21,6 @@ export default async function RatePage({ params }: Props) {
   const userId = session?.user?.id;
   if (!userId) notFound();
 
-  const isAdmin = session?.user?.role === UserRole.ADMIN || session?.user?.role === UserRole.MODERATOR;
-
   const match = await db.match.findUnique({
     where: { id: matchId },
     select: {
@@ -30,6 +29,7 @@ export default async function RatePage({ params }: Props) {
       status: true,
       rating_open: true,
       rating_opened_at: true,
+      Season: { select: { league_id: true } },
       DraftPick: {
         select: {
           user_id: true,
@@ -46,6 +46,15 @@ export default async function RatePage({ params }: Props) {
   });
 
   if (!match) notFound();
+
+  const leagueId = match.Season?.league_id;
+  const member = leagueId ? await getLeagueMember(leagueId, userId) : null;
+  if (leagueId && !member) notFound();
+
+  const isAdmin =
+    session?.user?.role === UserRole.ADMIN ||
+    member?.role === LeagueRole.OWNER ||
+    member?.role === LeagueRole.MANAGER;
 
   const isParticipant = await db.matchParticipant.findUnique({
     where: { match_id_user_id: { match_id: matchId, user_id: userId } },

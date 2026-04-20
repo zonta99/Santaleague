@@ -10,9 +10,10 @@ export async function GET(req: NextRequest) {
   }
 
   const seasonId = req.nextUrl.searchParams.get("seasonId");
+  const leagueId = req.nextUrl.searchParams.get("leagueId") ?? "";
   const sid = seasonId ? parseInt(seasonId) : undefined;
 
-  const rows = await getLeaderboard(sid);
+  const rows = await getLeaderboard(leagueId, sid);
 
   const header = "Giocatore,Gol,Vittorie,Partite giocate,Media voto,Livello,Tier";
   const lines = rows.map((r) =>

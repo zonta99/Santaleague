@@ -110,3 +110,21 @@ export const RegisterSchema = z.object({
     message: "Name is required",
   }),
 });
+
+
+export const CreateLeagueSchema = z.object({
+  name: z.string().min(2, { message: "Il nome deve avere almeno 2 caratteri" }),
+  slug: z.string().min(2).regex(/^[a-z0-9-]+$/, { message: "Solo lettere minuscole, numeri e trattini" }),
+  description: z.string().optional(),
+});
+
+export const InviteMemberSchema = z.object({
+  email: z.string().email({ message: "Email non valida" }),
+  role: z.enum(["MANAGER", "MEMBER"]),
+});
+
+export const UpdateLeagueSchema = z.object({
+  name: z.string().min(2).optional(),
+  description: z.string().optional(),
+  logo: z.string().optional(),
+});

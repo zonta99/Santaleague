@@ -3,17 +3,12 @@ import { getRecentMatches } from "@/data/match";
 import { getUserStats } from "@/data/stats";
 import { getPendingRatingMatches } from "@/data/ratings";
 import { currentUser } from "@/lib/auth";
+import { getActiveLeagueId } from "@/lib/active-league";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MatchStatus } from "@prisma/client";
-import {
-  Trophy,
-  Target,
-  Activity,
-  CalendarCheck,
-  Star,
-} from "lucide-react";
+import { Trophy, Target, Activity, CalendarCheck, Star } from "lucide-react";
 
 const statusLabel: Record<MatchStatus, string> = {
   SCHEDULED: "Programmata",
@@ -37,15 +32,7 @@ function formatDate(date: Date) {
   });
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-}) {
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number | string }) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-1 py-4 px-4">
@@ -60,10 +47,11 @@ function StatCard({
 }
 
 export default async function DashboardPage() {
-  const user = await currentUser();
+  const [leagueId, user] = await Promise.all([getActiveLeagueId(), currentUser()]);
+
   const [matches, stats, pendingRatings] = await Promise.all([
-    getRecentMatches(3),
-    user?.id ? getUserStats(user.id) : null,
+    getRecentMatches(3, leagueId!),
+    user?.id ? getUserStats(user.id, leagueId!) : null,
     user?.id ? getPendingRatingMatches(user.id) : [],
   ]);
 
@@ -90,7 +78,7 @@ export default async function DashboardPage() {
                 </div>
               </div>
               <Button asChild size="sm" className="bg-amber-500 hover:bg-amber-400 text-black font-semibold flex-shrink-0">
-                <Link href={`/match/${pendingRatings[0].match_id}/rate`}>Vota ora</Link>
+                <Link href={`/match/${pendingRatings[0].id}/rate`}>Vota ora</Link>
               </Button>
             </CardContent>
           </Card>
@@ -126,22 +114,10 @@ export default async function DashboardPage() {
             Le tue statistiche
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <StatCard
-              icon={<Activity className="h-4 w-4 text-muted-foreground" />}
-              label="Partite"
-              value={stats.matchesPlayed}
-            />
-            <StatCard
-              icon={<Target className="h-4 w-4 text-green-500" />}
-              label="Goal"
-              value={stats.goals}
-            />
+            <StatCard icon={<Activity className="h-4 w-4 text-muted-foreground" />} label="Partite" value={stats.matchesPlayed} />
+            <StatCard icon={<Target className="h-4 w-4 text-green-500" />} label="Goal" value={stats.goals} />
             {stats.matchesPlayed > 0 && (
-              <StatCard
-                icon={<Trophy className="h-4 w-4 text-amber-400" />}
-                label="Reti/partita"
-                value={(stats.goals / stats.matchesPlayed).toFixed(1)}
-              />
+              <StatCard icon={<Trophy className="h-4 w-4 text-amber-400" />} label="Reti/partita" value={(stats.goals / stats.matchesPlayed).toFixed(1)} />
             )}
           </div>
         </section>

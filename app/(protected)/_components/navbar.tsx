@@ -6,14 +6,22 @@ import { cn } from "@/lib/utils";
 import { UserButton } from "@/components/auth/user-button";
 import { NotificationBell } from "@/app/(protected)/_components/notification-bell";
 import { useCurrentRole } from "@/hooks/use-current-role";
-import { UserRole } from "@prisma/client";
+import { UserRole, LeagueRole } from "@prisma/client";
+import { useLeague } from "@/components/league/league-provider";
+import { LeagueSwitcher } from "@/components/league/league-switcher";
 
 export const Navbar = () => {
   const pathname = usePathname();
   const role = useCurrentRole();
+  const { role: leagueRole } = useLeague();
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+
+  const showAdmin =
+    role === UserRole.ADMIN ||
+    leagueRole === LeagueRole.OWNER ||
+    leagueRole === LeagueRole.MANAGER;
 
   const links = [
     { href: "/dashboard", label: "Home" },
@@ -21,7 +29,7 @@ export const Navbar = () => {
     { href: "/leaderboard", label: "Classifica" },
     { href: "/players", label: "Giocatori" },
     { href: "/settings", label: "Profilo" },
-    ...(role === UserRole.ADMIN || role === UserRole.MODERATOR
+    ...(showAdmin
       ? [{ href: "/admin", label: role === UserRole.ADMIN ? "Admin" : "Gestione" }]
       : []),
   ];
@@ -55,6 +63,7 @@ export const Navbar = () => {
       </div>
 
       <div className="flex-1 flex items-center justify-end gap-x-2">
+        <LeagueSwitcher />
         <NotificationBell />
         <UserButton />
       </div>

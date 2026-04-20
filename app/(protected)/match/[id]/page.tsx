@@ -1,8 +1,9 @@
 import { getMatchById, getMatchParticipants } from "@/data/match";
 import { getPendingRatingMatches } from "@/data/ratings";
+import { getLeagueMember } from "@/data/league";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { UserRole } from "@prisma/client";
+import { UserRole, LeagueRole } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { JoinMatchButton } from "../_components/join-match-button";
@@ -29,7 +30,6 @@ export default async function MatchDetailPage({ params }: Props) {
 
   const session = await auth();
   const userId = session?.user?.id;
-  const isAdmin = session?.user?.role === UserRole.ADMIN || session?.user?.role === UserRole.MODERATOR;
 
   const [match, participants, pendingRatings] = await Promise.all([
     getMatchById(matchId),
@@ -38,6 +38,18 @@ export default async function MatchDetailPage({ params }: Props) {
   ]);
 
   if (!match) notFound();
+
+  const leagueId = match.Season?.league_id;
+  const member = leagueId && userId ? await getLeagueMember(leagueId, userId) : null;
+
+  if (leagueId) {
+    if (!userId || !member) notFound();
+  }
+
+  const isAdmin =
+    session?.user?.role === UserRole.ADMIN ||
+    member?.role === LeagueRole.OWNER ||
+    member?.role === LeagueRole.MANAGER;
 
   const isParticipant = userId
     ? !!(await db.matchParticipant.findUnique({
@@ -110,6 +122,7 @@ export default async function MatchDetailPage({ params }: Props) {
       <MatchHubTabs
         matchId={matchId}
         games={match.Game}
+        matchRatings={match.MatchRating}
         participants={participants}
         draftPicks={match.DraftPick}
         defaultTab={defaultTab}

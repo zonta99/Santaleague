@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { currentUser, currentRole } from "@/lib/auth";
-import { hasPermission } from "@/lib/permissions";
+import { currentUser } from "@/lib/auth";
+import { canPerformLeagueAction } from "@/lib/league-auth";
+import { getLeagueMember } from "@/data/league";
 import { RatingRole } from "@prisma/client";
 import { checkCareerBadgesForPlayer } from "@/actions/badges";
 import * as z from "zod";
@@ -21,13 +22,21 @@ export const submitRatings = async (
   const user = await currentUser();
   if (!user?.id) return { error: "Non autenticato" };
 
-  const match = await db.match.findUnique({ where: { id: matchId } });
+  const match = await db.match.findUnique({
+    where: { id: matchId },
+    select: { rating_open: true, rating_opened_at: true, Season: { select: { league_id: true } } },
+  });
   if (!match) return { error: "Match non trovato" };
   if (!match.rating_open) return { error: "La finestra di valutazione è chiusa" };
 
   if (match.rating_opened_at) {
     const diff = Date.now() - new Date(match.rating_opened_at).getTime();
     if (diff > 48 * 60 * 60 * 1000) return { error: "Finestra di valutazione scaduta" };
+  }
+
+  if (match.Season?.league_id) {
+    const member = await getLeagueMember(match.Season.league_id, user.id);
+    if (!member) return { error: "Non sei membro di questa lega" };
   }
 
   const parsed = z.array(RatingEntrySchema).safeParse(ratings);
@@ -56,8 +65,9 @@ export const submitRatings = async (
     });
   }
 
+  const leagueId = match.Season?.league_id ?? "";
   const ratedPlayerIds = Array.from(new Set(filtered.map((r) => r.rated_player_id)));
-  await Promise.all(ratedPlayerIds.map((id) => checkCareerBadgesForPlayer(id)));
+  await Promise.all(ratedPlayerIds.map((id) => checkCareerBadgesForPlayer(id, leagueId)));
 
   revalidatePath(`/match/${matchId}/rate`);
   revalidatePath(`/match/${matchId}`);
@@ -66,8 +76,15 @@ export const submitRatings = async (
 };
 
 export const openRatingWindow = async (matchId: number) => {
-  const role = await currentRole();
-  if (!hasPermission(role, "manageGameEvents")) return { error: "Non autorizzato" };
+  const match = await db.match.findUnique({
+    where: { id: matchId },
+    select: { Season: { select: { league_id: true } } },
+  });
+  if (!match) return { error: "Partita non trovata" };
+
+  const leagueId = match.Season?.league_id ?? "";
+  const allowed = await canPerformLeagueAction(leagueId, "manageGameEvents");
+  if (!allowed) return { error: "Non autorizzato" };
 
   await db.match.update({
     where: { id: matchId },
@@ -79,8 +96,15 @@ export const openRatingWindow = async (matchId: number) => {
 };
 
 export const closeRatingWindow = async (matchId: number) => {
-  const role = await currentRole();
-  if (!hasPermission(role, "manageGameEvents")) return { error: "Non autorizzato" };
+  const match = await db.match.findUnique({
+    where: { id: matchId },
+    select: { Season: { select: { league_id: true } } },
+  });
+  if (!match) return { error: "Partita non trovata" };
+
+  const leagueId = match.Season?.league_id ?? "";
+  const allowed = await canPerformLeagueAction(leagueId, "manageGameEvents");
+  if (!allowed) return { error: "Non autorizzato" };
 
   await db.match.update({
     where: { id: matchId },

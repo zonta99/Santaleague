@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getLeaderboard } from "@/data/stats";
 import { getAllSeasons, getActiveSeason } from "@/data/season";
+import { getActiveLeagueId } from "@/lib/active-league";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Target, Star, TrendingUp, Archive } from "lucide-react";
@@ -16,11 +17,12 @@ export default async function LeaderboardPage({
 }: {
   searchParams: Promise<{ season?: string }>;
 }) {
-  const { season } = await searchParams;
-  const [seasons, activeSeason] = await Promise.all([getAllSeasons(), getActiveSeason()]);
+  const [{ season }, leagueId] = await Promise.all([searchParams, getActiveLeagueId()]);
+
+  const [seasons, activeSeason] = await Promise.all([getAllSeasons(leagueId!), getActiveSeason(leagueId!)]);
 
   const seasonId = season ? parseInt(season) : activeSeason?.id;
-  const rows = await getLeaderboard(seasonId);
+  const rows = await getLeaderboard(leagueId!, seasonId);
 
   const currentSeason = seasons.find((s) => s.id === seasonId);
   const label = currentSeason ? currentSeason.name : "Tutte le stagioni";

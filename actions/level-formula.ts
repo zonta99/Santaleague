@@ -30,11 +30,7 @@ export const updateLevelFormula = async (values: z.infer<typeof LevelFormulaSche
   if (existing) {
     await db.levelFormula.update({
       where: { id: existing.id },
-      data: { ...parsed.data, updated_by: user?.id },
-    });
-  } else {
-    await db.levelFormula.create({
-      data: { ...parsed.data, updated_by: user?.id },
+      data: { ...parsed.data, updated_by: user?.id ?? null },
     });
   }
 

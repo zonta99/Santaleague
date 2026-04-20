@@ -54,6 +54,22 @@ export const generatePasswordResetToken = async (email: string) => {
   return passwordResetToken;
 }
 
+export const generateLeagueInviteToken = async (
+  email: string,
+  leagueId: string,
+  role: import("@prisma/client").LeagueRole,
+  invitedBy: string
+) => {
+  const token = uuidv4();
+  const expires = new Date(Date.now() + 48 * 3600 * 1000);
+
+  await db.leagueInvite.deleteMany({ where: { email, league_id: leagueId } });
+
+  return db.leagueInvite.create({
+    data: { token, email, league_id: leagueId, role, expires, invited_by: invitedBy },
+  });
+};
+
 export const generateVerificationToken = async (email: string) => {
   const token = uuidv4();
   const expires = new Date(new Date().getTime() + 3600 * 1000);
