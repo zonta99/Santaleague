@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { UserRole, LeagueRole } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { autoComputeMvpIfExpired } from "@/actions/rating";
 import { JoinMatchButton } from "../_components/join-match-button";
 import { MatchControls } from "./_components/match-controls";
 import { MatchHubTabs } from "./_components/match-hub-tabs";
@@ -58,12 +59,20 @@ export default async function MatchDetailPage({ params }: Props) {
       }))
     : false;
 
+  // Auto-compute MVP after 48h if not yet set (idempotent, checks expiry internally)
+  await autoComputeMvpIfExpired(matchId);
+
   const status: string = match.status;
   const statusCfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.SCHEDULED;
   const isScheduled = status === "SCHEDULED";
   const isOngoing = status === "ONGOING";
   const isCompleted = status === "COMPLETED";
   const hasDraft = match.DraftPick.length > 0;
+
+  const ratingExpired = match.rating_opened_at
+    ? Date.now() - new Date(match.rating_opened_at).getTime() > 48 * 60 * 60 * 1000
+    : false;
+  const ratingClosed = isCompleted && (!match.rating_open || ratingExpired);
 
   const showPartite = match.Game.length > 0;
   const showBozza = isAdmin && isScheduled;
@@ -124,6 +133,7 @@ export default async function MatchDetailPage({ params }: Props) {
         matchId={matchId}
         games={match.Game}
         matchRatings={match.MatchRating}
+        mvp={match.User ?? null}
         participants={participants}
         draftPicks={match.DraftPick}
         defaultTab={defaultTab}
@@ -131,8 +141,10 @@ export default async function MatchDetailPage({ params }: Props) {
         showBozza={showBozza}
         showVota={showVota}
         showRiepilogo={showRiepilogo}
+        ratingClosed={ratingClosed}
         isScheduled={isScheduled}
         isOngoing={isOngoing}
+        isCompleted={isCompleted}
         isAdmin={isAdmin}
         hasDraft={hasDraft}
       />

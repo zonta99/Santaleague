@@ -5,6 +5,7 @@ import { LeagueRole } from "@prisma/client";
 
 interface LeagueContextValue {
   leagueId: string;
+  leagueName: string;
   role: LeagueRole;
 }
 
@@ -12,15 +13,17 @@ const LeagueContext = createContext<LeagueContextValue | null>(null);
 
 export function LeagueProvider({
   leagueId,
+  leagueName,
   role,
   children,
 }: {
   leagueId: string;
+  leagueName: string;
   role: LeagueRole;
   children: React.ReactNode;
 }) {
   return (
-    <LeagueContext.Provider value={{ leagueId, role }}>
+    <LeagueContext.Provider value={{ leagueId, leagueName, role }}>
       {children}
     </LeagueContext.Provider>
   );

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getAllSeasons } from "@/data/season";
+import { getActiveLeagueId } from "@/lib/active-league";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,8 @@ function formatDate(date: Date) {
 }
 
 export default async function SeasonsArchivePage() {
-  const seasons = await getAllSeasons();
+  const leagueId = await getActiveLeagueId();
+  const seasons = await getAllSeasons(leagueId ?? undefined);
 
   return (
     <div className="w-full max-w-3xl space-y-6">

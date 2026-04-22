@@ -53,6 +53,15 @@ export default async function DraftPage({ params }: Props) {
   const hasDraft = match.DraftPick.length > 0;
   const isLocked = match.draft_locked;
 
+  const numTeams = match.num_teams ?? 2;
+  const playersPerTeam = match.players_per_team ?? 1;
+  const required = numTeams * playersPerTeam;
+  const actual = match.MatchParticipant.length;
+  const canExecuteDraft = actual >= required;
+  const draftBlockReason = canExecuteDraft
+    ? undefined
+    : `Partecipanti insufficienti: ${actual}/${required} (${numTeams} squadre × ${playersPerTeam} giocatori)`;
+
   // Fetch player levels for all participants
   const season = match.season_id
     ? await db.season.findUnique({ where: { id: match.season_id }, select: { league_id: true } })
@@ -105,7 +114,7 @@ export default async function DraftPage({ params }: Props) {
           <Users className="h-4 w-4" />
           <span>{match.MatchParticipant.length} partecipanti · {match.Game.length} game</span>
         </div>
-        <DraftActions matchId={matchId} hasDraft={hasDraft} isLocked={isLocked} />
+        <DraftActions matchId={matchId} hasDraft={hasDraft} isLocked={isLocked} canExecuteDraft={canExecuteDraft} draftBlockReason={draftBlockReason} />
       </div>
 
       {/* Draft result */}

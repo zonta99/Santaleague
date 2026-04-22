@@ -5,12 +5,13 @@ export const getPendingRatingMatches = async (userId: string) => {
   const openMatches = await db.match.findMany({
     where: {
       rating_open: true,
-      DraftPick: { some: { user_id: userId } },
+      MatchParticipant: { some: { user_id: userId } },
     },
     select: {
       id: true,
       date: true,
       rating_opened_at: true,
+      // Players to rate = those who were actually drafted (played)
       DraftPick: { select: { user_id: true } },
       MatchRating: {
         where: { rater_id: userId },
@@ -25,10 +26,13 @@ export const getPendingRatingMatches = async (userId: string) => {
       if (diff > 48 * 60 * 60 * 1000) return false;
     }
 
-    const allPlayers = match.DraftPick.map((d) => d.user_id).filter((id) => id !== userId);
-    return allPlayers.some((id) => {
+    const playersToRate = match.DraftPick.map((d) => d.user_id).filter((id) => id !== userId);
+    // No drafted players means nothing to rate
+    if (playersToRate.length === 0) return false;
+
+    return playersToRate.some((id) => {
       const given = match.MatchRating.filter((r) => r.rated_player_id === id);
-      return !given.some((r) => r.role === "FIELD") || !given.some((r) => r.role === "GOALKEEPER");
+      return !given.some((r) => r.role === "FIELD") && !given.some((r) => r.role === "GOALKEEPER");
     });
   });
 };

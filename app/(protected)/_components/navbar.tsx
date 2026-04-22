@@ -13,7 +13,7 @@ import { LeagueSwitcher } from "@/components/league/league-switcher";
 export const Navbar = () => {
   const pathname = usePathname();
   const role = useCurrentRole();
-  const { role: leagueRole } = useLeague();
+  const { role: leagueRole, leagueName } = useLeague();
 
   const isActive = (href: string) =>
     href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
@@ -41,7 +41,7 @@ export const Navbar = () => {
           href="/dashboard"
           className="text-base font-bold tracking-tight text-foreground hover:text-primary transition-colors"
         >
-          Santaleague
+          {leagueName}
         </Link>
       </div>
 

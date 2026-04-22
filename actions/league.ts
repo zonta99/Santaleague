@@ -8,7 +8,7 @@ import { LeagueRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { currentUser } from "@/lib/auth";
 import { canPerformLeagueAction } from "@/lib/league-auth";
-import { getLeagueMember, getLeagueById, getUserLeagues } from "@/data/league";
+import { getLeagueMember, getLeagueById, getUserLeagues, getLeagueByPublicToken } from "@/data/league";
 import { getLeagueInviteByToken } from "@/data/league-invite";
 import { generateLeagueInviteToken } from "@/lib/tokens";
 import { sendLeagueInviteEmail } from "@/lib/mail";
@@ -194,4 +194,125 @@ export const getUserLeaguesAction = async () => {
   const user = await currentUser();
   if (!user?.id) return [];
   return getUserLeagues(user.id);
+};
+
+export const generatePublicLink = async (leagueId: string) => {
+  const allowed = await canPerformLeagueAction(leagueId, "updateLeague");
+  if (!allowed) return { error: "Non autorizzato" };
+
+  const token = uuidv4();
+  await db.league.update({ where: { id: leagueId }, data: { public_invite_token: token } });
+  revalidatePath("/admin");
+  return { success: "Link generato", token };
+};
+
+export const disablePublicLink = async (leagueId: string) => {
+  const allowed = await canPerformLeagueAction(leagueId, "updateLeague");
+  if (!allowed) return { error: "Non autorizzato" };
+
+  await db.league.update({ where: { id: leagueId }, data: { public_invite_token: null } });
+  revalidatePath("/admin");
+  return { success: "Link disabilitato" };
+};
+
+export const requestJoinLeague = async (token: string) => {
+  const user = await currentUser();
+  if (!user?.id) return { error: "Devi essere autenticato per richiedere l'accesso" };
+
+  const league = await getLeagueByPublicToken(token);
+  if (!league) return { error: "Link non valido" };
+
+  const alreadyMember = await getLeagueMember(league.id, user.id);
+  if (alreadyMember) return { success: "Sei già membro di questa lega", leagueId: league.id };
+
+  const existing = await db.leagueJoinRequest.findUnique({
+    where: { league_id_user_id: { league_id: league.id, user_id: user.id } },
+  });
+  if (existing) {
+    if (existing.status === "PENDING") return { success: "Richiesta già inviata, attendi l'approvazione" };
+    if (existing.status === "REJECTED") return { error: "La tua richiesta è stata rifiutata" };
+  }
+
+  await db.leagueJoinRequest.upsert({
+    where: { league_id_user_id: { league_id: league.id, user_id: user.id } },
+    create: { league_id: league.id, user_id: user.id, status: "PENDING" },
+    update: { status: "PENDING" },
+  });
+
+  // Notify league owners and managers
+  const { createNotificationsForUsers } = await import("@/actions/notifications");
+  const managers = await db.leagueMember.findMany({
+    where: { league_id: league.id, role: { in: ["OWNER", "MANAGER"] } },
+    select: { user_id: true },
+  });
+  await createNotificationsForUsers(
+    managers.map((m) => m.user_id),
+    "JOIN_REQUEST",
+    "Nuova richiesta di accesso",
+    `${user.name ?? user.email} ha richiesto di unirsi a ${league.name}`,
+    { leagueId: league.id, userId: user.id }
+  );
+
+  return { success: "Richiesta inviata! Attendi l'approvazione dell'admin." };
+};
+
+export const approveJoinRequest = async (requestId: string) => {
+  const user = await currentUser();
+  if (!user?.id) return { error: "Non autenticato" };
+
+  const request = await db.leagueJoinRequest.findUnique({
+    where: { id: requestId },
+    include: { User: true, League: true },
+  });
+  if (!request) return { error: "Richiesta non trovata" };
+
+  const allowed = await canPerformLeagueAction(request.league_id, "manageMembers");
+  if (!allowed) return { error: "Non autorizzato" };
+
+  await db.$transaction([
+    db.leagueMember.create({
+      data: { league_id: request.league_id, user_id: request.user_id, role: LeagueRole.MEMBER },
+    }),
+    db.leagueJoinRequest.update({ where: { id: requestId }, data: { status: "APPROVED" } }),
+  ]);
+
+  const { createNotificationsForUsers } = await import("@/actions/notifications");
+  await createNotificationsForUsers(
+    [request.user_id],
+    "JOIN_REQUEST",
+    "Richiesta approvata!",
+    `La tua richiesta di unirti a ${request.League.name} è stata approvata.`,
+    { leagueId: request.league_id }
+  );
+
+  revalidatePath("/admin");
+  return { success: "Richiesta approvata" };
+};
+
+export const rejectJoinRequest = async (requestId: string) => {
+  const user = await currentUser();
+  if (!user?.id) return { error: "Non autenticato" };
+
+  const request = await db.leagueJoinRequest.findUnique({
+    where: { id: requestId },
+    include: { User: true, League: true },
+  });
+  if (!request) return { error: "Richiesta non trovata" };
+
+  const allowed = await canPerformLeagueAction(request.league_id, "manageMembers");
+  if (!allowed) return { error: "Non autorizzato" };
+
+  await db.leagueJoinRequest.update({ where: { id: requestId }, data: { status: "REJECTED" } });
+
+  const { createNotificationsForUsers } = await import("@/actions/notifications");
+  await createNotificationsForUsers(
+    [request.user_id],
+    "JOIN_REQUEST",
+    "Richiesta rifiutata",
+    `La tua richiesta di unirti a ${request.League.name} è stata rifiutata.`,
+    { leagueId: request.league_id }
+  );
+
+  revalidatePath("/admin");
+  return { success: "Richiesta rifiutata" };
 };

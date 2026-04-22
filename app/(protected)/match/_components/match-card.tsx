@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { MatchStatus } from "@prisma/client";
+import { MatchStatus, MatchType } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { JoinMatchButton } from "./join-match-button";
@@ -12,7 +12,7 @@ export interface MatchItem {
   id: number;
   date: string;
   status: MatchStatus;
-  match_type: string;
+  match_type: MatchType;
   Location?: { name: string } | null;
   _count: { Game: number; MatchParticipant: number };
 }

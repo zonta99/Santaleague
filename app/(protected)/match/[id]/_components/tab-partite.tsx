@@ -17,6 +17,7 @@ type GameItem = {
   game_number: number;
   team1_id: number | null;
   team2_id: number | null;
+  winner_team_id: number | null;
   Team1: Team | null;
   Team2: Team | null;
   GameDetail: GameDetailItem[];
@@ -34,38 +35,47 @@ interface Props {
   draftPicks: DraftPick[];
   matchId: number;
   isOngoing: boolean;
+  isCompleted: boolean;
   isAdmin: boolean;
 }
 
-function ScoreBoard({ game }: { game: GameItem }) {
+function ScoreBoard({ game, isCompleted }: { game: GameItem; isCompleted: boolean }) {
   if (!game.Team1 || !game.Team2) return null;
   const t1 = game.GameDetail.filter((d) => d.event_type === "Goal" && d.team_id === game.team1_id).length;
   const t2 = game.GameDetail.filter((d) => d.event_type === "Goal" && d.team_id === game.team2_id).length;
 
+  const winner = isCompleted ? game.winner_team_id : null;
+  const isDraw = isCompleted && winner === null;
+
   return (
     <div className="flex items-center justify-between gap-4 py-4 px-2">
       <div className="flex flex-col items-center gap-1 flex-1">
-        <div className="w-10 h-10 rounded-full bg-blue-500/20 border border-blue-400/20 flex items-center justify-center text-blue-300 text-xs font-bold">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border ${winner === game.team1_id ? "bg-emerald-500/20 border-emerald-400/40 text-emerald-300 ring-1 ring-emerald-400/30" : "bg-blue-500/20 border-blue-400/20 text-blue-300"}`}>
           {game.Team1.name.charAt(0)}
         </div>
         <span className="text-xs text-muted-foreground text-center leading-tight max-w-[80px]">{game.Team1.name}</span>
+        {winner === game.team1_id && <span className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wide">Vincitore</span>}
       </div>
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-4xl font-black tabular-nums text-white">{t1}</span>
-        <span className="text-xl text-white/20 font-light">–</span>
-        <span className="text-4xl font-black tabular-nums text-white">{t2}</span>
+      <div className="flex flex-col items-center gap-1">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-4xl font-black tabular-nums text-white">{t1}</span>
+          <span className="text-xl text-white/20 font-light">–</span>
+          <span className="text-4xl font-black tabular-nums text-white">{t2}</span>
+        </div>
+        {isDraw && <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wide">Pareggio</span>}
       </div>
       <div className="flex flex-col items-center gap-1 flex-1">
-        <div className="w-10 h-10 rounded-full bg-red-500/20 border border-red-400/20 flex items-center justify-center text-red-300 text-xs font-bold">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold border ${winner === game.team2_id ? "bg-emerald-500/20 border-emerald-400/40 text-emerald-300 ring-1 ring-emerald-400/30" : "bg-red-500/20 border-red-400/20 text-red-300"}`}>
           {game.Team2.name.charAt(0)}
         </div>
         <span className="text-xs text-muted-foreground text-center leading-tight max-w-[80px]">{game.Team2.name}</span>
+        {winner === game.team2_id && <span className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wide">Vincitore</span>}
       </div>
     </div>
   );
 }
 
-export function TabPartite({ games, draftPicks, matchId, isOngoing, isAdmin }: Props) {
+export function TabPartite({ games, draftPicks, matchId, isOngoing, isCompleted, isAdmin }: Props) {
   if (games.length === 0) {
     return <p className="text-sm text-muted-foreground pt-2">Nessuna partita ancora assegnata.</p>;
   }
@@ -84,7 +94,7 @@ export function TabPartite({ games, draftPicks, matchId, isOngoing, isAdmin }: P
 
           {game.Team1 && game.Team2 ? (
             <div className="px-5">
-              <ScoreBoard game={game} />
+              <ScoreBoard game={game} isCompleted={isCompleted} />
             </div>
           ) : (
             !isOngoing && (

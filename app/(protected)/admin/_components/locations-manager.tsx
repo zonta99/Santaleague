@@ -19,15 +19,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Location = { id: number; name: string; description: string | null; _count?: { Match: number } };
 
@@ -122,82 +113,77 @@ export function LocationsManager({ locations, leagueId }: Props) {
   };
 
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Campi da gioco</CardTitle>
+    <div className="w-full max-w-xl space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {locations.length} {locations.length === 1 ? "campo" : "campi"} registrati
+        </p>
         {!showCreate && (
-          <Button size="sm" variant="outline" onClick={() => setShowCreate(true)}>
+          <Button size="sm" onClick={() => setShowCreate(true)}>
             <Plus className="h-4 w-4 mr-1" /> Aggiungi
           </Button>
         )}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {showCreate && (
+      </div>
+
+      {showCreate && (
+        <div className="rounded-lg border border-border p-4 bg-card">
           <LocationForm
             defaultValues={{ name: "", description: "" }}
             onSubmit={handleCreate}
             onCancel={() => setShowCreate(false)}
             isPending={isPending}
           />
+        </div>
+      )}
+
+      <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+        {locations.length === 0 && (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Nessun campo registrato
+          </p>
         )}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Descrizione</TableHead>
-              <TableHead className="w-20 text-right">Azioni</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {locations.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={3} className="text-center text-muted-foreground">
-                  Nessun campo registrato
-                </TableCell>
-              </TableRow>
-            )}
-            {locations.map((loc) =>
-              editingId === loc.id ? (
-                <TableRow key={loc.id}>
-                  <TableCell colSpan={3}>
-                    <LocationForm
-                      defaultValues={{ name: loc.name, description: loc.description ?? "" }}
-                      onSubmit={(values) => handleUpdate(loc.id, values)}
-                      onCancel={() => setEditingId(null)}
-                      isPending={isPending}
-                    />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                <TableRow key={loc.id}>
-                  <TableCell className="font-medium">{loc.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{loc.description ?? "—"}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        disabled={isPending}
-                        onClick={() => setEditingId(loc.id)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        disabled={isPending}
-                        onClick={() => handleDelete(loc.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )
-            )}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+        {locations.map((loc) =>
+          editingId === loc.id ? (
+            <div key={loc.id} className="p-4 bg-card">
+              <LocationForm
+                defaultValues={{ name: loc.name, description: loc.description ?? "" }}
+                onSubmit={(values) => handleUpdate(loc.id, values)}
+                onCancel={() => setEditingId(null)}
+                isPending={isPending}
+              />
+            </div>
+          ) : (
+            <div key={loc.id} className="flex items-center justify-between px-4 py-3 bg-card hover:bg-muted/30 transition-colors">
+              <div>
+                <p className="text-sm font-medium">{loc.name}</p>
+                {loc.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{loc.description}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  disabled={isPending}
+                  onClick={() => setEditingId(loc.id)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  disabled={isPending}
+                  onClick={() => handleDelete(loc.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          )
+        )}
+      </div>
+    </div>
   );
 }

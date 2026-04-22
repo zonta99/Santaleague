@@ -54,6 +54,7 @@ interface Props {
   matchId: number;
   games: GameItem[];
   matchRatings: GameRatingItem[];
+  mvp: { id: string; name: string | null; image: string | null } | null;
   participants: Participant[];
   draftPicks: DraftPick[];
   defaultTab: TabKey;
@@ -61,8 +62,10 @@ interface Props {
   showBozza: boolean;
   showVota: boolean;
   showRiepilogo: boolean;
+  ratingClosed: boolean;
   isScheduled: boolean;
   isOngoing: boolean;
+  isCompleted: boolean;
   isAdmin: boolean;
   hasDraft: boolean;
 }
@@ -81,6 +84,7 @@ export function MatchHubTabs({
   matchId,
   games,
   matchRatings,
+  mvp,
   participants,
   draftPicks,
   defaultTab,
@@ -88,8 +92,10 @@ export function MatchHubTabs({
   showBozza,
   showVota,
   showRiepilogo,
+  ratingClosed,
   isScheduled,
   isOngoing,
+  isCompleted,
   isAdmin,
   hasDraft,
 }: Props) {
@@ -146,11 +152,12 @@ export function MatchHubTabs({
           draftPicks={draftPicks}
           matchId={matchId}
           isOngoing={isOngoing}
+          isCompleted={isCompleted}
           isAdmin={isAdmin}
         />
       )}
       {activeTab === "riepilogo" && (
-        <TabRiepilogo games={games} matchRatings={matchRatings} />
+        <TabRiepilogo games={games} matchRatings={matchRatings} mvp={mvp} ratingClosed={ratingClosed} />
       )}
     </div>
   );

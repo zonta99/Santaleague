@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 
 export const getAllMatches = async (leagueId?: string) => {
   return db.match.findMany({
-    where: leagueId ? { Season: { league_id: leagueId } } : undefined,
+    where: leagueId ? { league_id: leagueId } : undefined,
     orderBy: { date: "desc" },
     select: {
       id: true,
@@ -28,7 +28,7 @@ export const getMatchParticipants = async (matchId: number) => {
 
 export const getRecentMatches = async (take = 3, leagueId?: string) => {
   return db.match.findMany({
-    where: leagueId ? { Season: { league_id: leagueId } } : undefined,
+    where: leagueId ? { league_id: leagueId } : undefined,
     orderBy: { date: "desc" },
     take,
     select: {
@@ -69,6 +69,8 @@ export const getMatchById = async (id: number): Promise<any> => {
             status: true,
             match_type: true,
             mvp_id: true,
+            User: { select: { id: true, name: true, image: true } },
+            rating_opened_at: true,
             draft_locked: true,
             season_id: true,
             num_teams: true,

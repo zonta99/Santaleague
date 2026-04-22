@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   startOfMonth,
   endOfMonth,
@@ -14,7 +15,7 @@ import {
   subMonths,
 } from "date-fns";
 import { it } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { MatchCard, MatchItem } from "./match-card";
@@ -22,9 +23,11 @@ import { MatchCard, MatchItem } from "./match-card";
 interface MatchCalendarViewProps {
   matches: MatchItem[];
   joinedMatchIds: number[];
+  canCreate?: boolean;
 }
 
-export function MatchCalendarView({ matches, joinedMatchIds }: MatchCalendarViewProps) {
+export function MatchCalendarView({ matches, joinedMatchIds, canCreate = false }: MatchCalendarViewProps) {
+  const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const joinedSet = useMemo(() => new Set(joinedMatchIds), [joinedMatchIds]);
 
@@ -49,6 +52,10 @@ export function MatchCalendarView({ matches, joinedMatchIds }: MatchCalendarView
   }, [currentMonth]);
 
   const weekdays = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+
+  function handleCreateForDay(dateKey: string) {
+    router.push(`/admin/match/new?date=${dateKey}`);
+  }
 
   return (
     <div className="w-full">
@@ -89,6 +96,21 @@ export function MatchCalendarView({ matches, joinedMatchIds }: MatchCalendarView
           const dayMatches = matchIndex.get(key);
           const isCurrentMonth = isSameMonth(day, currentMonth);
           const isToday = isSameDay(day, new Date());
+          const isClickable = !!dayMatches || canCreate;
+
+          const dayNumber = (
+            <span
+              className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
+                isToday
+                  ? "bg-primary text-primary-foreground"
+                  : isCurrentMonth
+                  ? "text-foreground"
+                  : "text-muted-foreground/40"
+              }`}
+            >
+              {format(day, "d")}
+            </span>
+          );
 
           return (
             <div
@@ -97,57 +119,48 @@ export function MatchCalendarView({ matches, joinedMatchIds }: MatchCalendarView
                 isCurrentMonth ? "bg-card" : "bg-muted/20"
               }`}
             >
-              {dayMatches ? (
+              {isClickable ? (
                 <Popover>
                   <PopoverTrigger asChild>
                     <button className="w-full h-full flex flex-col items-center gap-1 rounded hover:bg-accent transition-colors p-1">
-                      <span
-                        className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
-                          isToday
-                            ? "bg-primary text-primary-foreground"
-                            : isCurrentMonth
-                            ? "text-foreground"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {format(day, "d")}
-                      </span>
-                      <div className="flex gap-0.5 flex-wrap justify-center">
-                        {dayMatches.slice(0, 3).map((m) => (
-                          <span
-                            key={m.id}
-                            className="w-1.5 h-1.5 rounded-full bg-primary"
-                          />
-                        ))}
-                      </div>
+                      {dayNumber}
+                      {dayMatches && (
+                        <div className="flex gap-0.5 flex-wrap justify-center">
+                          {dayMatches.slice(0, 3).map((m) => (
+                            <span key={m.id} className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          ))}
+                        </div>
+                      )}
+                      {!dayMatches && canCreate && (
+                        <Plus className="w-3 h-3 text-muted-foreground/40" />
+                      )}
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-80 p-2 space-y-2" align="center">
                     <p className="text-xs font-medium text-muted-foreground px-1 capitalize">
                       {format(day, "EEEE d MMMM", { locale: it })}
                     </p>
-                    {dayMatches.map((match) => (
+                    {dayMatches?.map((match) => (
                       <MatchCard
                         key={match.id}
                         match={match}
                         isJoined={joinedSet.has(match.id)}
                       />
                     ))}
+                    {canCreate && (
+                      <button
+                        onClick={() => handleCreateForDay(key)}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 hover:bg-accent transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Aggiungi partita
+                      </button>
+                    )}
                   </PopoverContent>
                 </Popover>
               ) : (
                 <div className="flex justify-center pt-1">
-                  <span
-                    className={`text-xs w-6 h-6 flex items-center justify-center rounded-full ${
-                      isToday
-                        ? "bg-primary text-primary-foreground font-semibold"
-                        : isCurrentMonth
-                        ? "text-foreground"
-                        : "text-muted-foreground/40"
-                    }`}
-                  >
-                    {format(day, "d")}
-                  </span>
+                  {dayNumber}
                 </div>
               )}
             </div>

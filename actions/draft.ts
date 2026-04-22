@@ -29,7 +29,17 @@ export const executeDraft = async (matchId: number) => {
 
   if (!match) return { error: "Partita non trovata" };
   if (match.draft_locked) return { error: "Draft bloccato" };
-  if (match.MatchParticipant.length < 2) return { error: "Servono almeno 2 partecipanti" };
+
+  const numTeams = match.num_teams ?? 2;
+  const playersPerTeam = match.players_per_team ?? 1;
+  const required = numTeams * playersPerTeam;
+  const actual = match.MatchParticipant.length;
+
+  if (actual < required) {
+    return {
+      error: `Partecipanti insufficienti: ${actual}/${required} (${numTeams} squadre × ${playersPerTeam} giocatori)`,
+    };
+  }
 
   // Clean up any existing unlocked draft
   const existingPicks = await db.draftPick.findMany({ where: { match_id: matchId }, select: { team_id: true } });
@@ -41,7 +51,6 @@ export const executeDraft = async (matchId: number) => {
     await db.team.deleteMany({ where: { id: { in: existingTeamIds } } });
   }
 
-  const numTeams = match.num_teams ?? 2;
   const teamNames = TEAM_NAMES.slice(0, numTeams);
 
   const matchDate = new Date(match.date).toLocaleDateString("it-IT", {
@@ -50,12 +59,25 @@ export const executeDraft = async (matchId: number) => {
   });
 
   // Fetch level for each participant
-  const participantsWithLevel = await Promise.all(
+  const rawLevels = await Promise.all(
     match.MatchParticipant.map(async (p) => {
       const { level } = await getPlayerLevel(p.user_id, leagueId, match.season_id ?? undefined);
       return { userId: p.user_id, level };
     })
   );
+
+  // Players with no history (level=0) get the avg level of players who do have history,
+  // so they're placed as "average" rather than as the weakest in the draft order.
+  const knownLevels = rawLevels.filter((p) => p.level > 0).map((p) => p.level);
+  const avgKnownLevel =
+    knownLevels.length > 0
+      ? knownLevels.reduce((s, v) => s + v, 0) / knownLevels.length
+      : 5;
+
+  const participantsWithLevel = rawLevels.map((p) => ({
+    userId: p.userId,
+    level: p.level > 0 ? p.level : avgKnownLevel,
+  }));
 
   const buckets = snakeDraft(participantsWithLevel, numTeams);
 
@@ -192,6 +214,13 @@ export const setCaptain = async (matchId: number, teamId: number, userId: string
   const leagueId = await resolveLeagueIdFromMatch(matchId);
   const allowed = await canPerformLeagueAction(leagueId, "executeDraft");
   if (!allowed) return { error: "Non autorizzato" };
+
+  const match = await db.match.findUnique({ where: { id: matchId }, select: { draft_locked: true } });
+  if (!match) return { error: "Partita non trovata" };
+  if (match.draft_locked) return { error: "Draft bloccato" };
+
+  const pick = await db.draftPick.findFirst({ where: { match_id: matchId, team_id: teamId, user_id: userId } });
+  if (!pick) return { error: "Il giocatore non appartiene a questa squadra" };
 
   await db.teamMember.updateMany({ where: { team_id: teamId }, data: { is_captain: false } });
 

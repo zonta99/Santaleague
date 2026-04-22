@@ -28,6 +28,7 @@ export const createMatch = async (values: z.infer<typeof CreateMatchSchema>, lea
       match_type,
       location_id,
       status: "SCHEDULED",
+      league_id: leagueId,
       season_id: activeSeason?.id ?? null,
       num_teams,
       players_per_team,
@@ -63,10 +64,21 @@ export const joinMatch = async (matchId: number) => {
 
   const match = await db.match.findUnique({
     where: { id: matchId },
-    select: { status: true, Season: { select: { league_id: true } } },
+    select: {
+      status: true,
+      num_teams: true,
+      players_per_team: true,
+      Season: { select: { league_id: true } },
+      _count: { select: { MatchParticipant: true } },
+    },
   });
   if (!match) return { error: "Partita non trovata" };
   if (match.status !== "SCHEDULED") return { error: "Non è possibile iscriversi a questa partita" };
+
+  const capacity = (match.num_teams ?? 2) * (match.players_per_team ?? 1);
+  if (match._count.MatchParticipant >= capacity) {
+    return { error: `Partita al completo (${capacity} posti disponibili)` };
+  }
 
   if (match.Season?.league_id) {
     const member = await getLeagueMember(match.Season.league_id, user.id);
@@ -88,7 +100,7 @@ export const joinMatch = async (matchId: number) => {
 export const updateMatchStatus = async (matchId: number, status: "SCHEDULED" | "ONGOING" | "COMPLETED" | "CANCELED") => {
   const match = await db.match.findUnique({
     where: { id: matchId },
-    select: { Season: { select: { league_id: true } } },
+    select: { status: true, draft_locked: true, Season: { select: { league_id: true } } },
   });
   if (!match) return { error: "Partita non trovata" };
 
@@ -96,7 +108,12 @@ export const updateMatchStatus = async (matchId: number, status: "SCHEDULED" | "
   const allowed = await canPerformLeagueAction(leagueId, "updateMatchStatus");
   if (!allowed) return { error: "Non autorizzato" };
 
+  if (status === "ONGOING" && !match.draft_locked) {
+    return { error: "Il draft deve essere bloccato prima di iniziare la partita" };
+  }
+
   await db.match.update({ where: { id: matchId }, data: { status } });
+  await db.game.updateMany({ where: { match_id: matchId }, data: { status } });
 
   if (status === "ONGOING") {
     const participants = await db.matchParticipant.findMany({
@@ -116,6 +133,28 @@ export const updateMatchStatus = async (matchId: number, status: "SCHEDULED" | "
     await db.match.update({
       where: { id: matchId },
       data: { rating_open: true, rating_opened_at: new Date() },
+    });
+
+    // Auto-compute winner_team_id inside a transaction for a consistent goal snapshot
+    await db.$transaction(async (tx) => {
+      const games = await tx.game.findMany({
+        where: { match_id: matchId },
+        select: {
+          id: true,
+          team1_id: true,
+          team2_id: true,
+          GameDetail: { where: { event_type: "Goal" }, select: { team_id: true } },
+        },
+      });
+      await Promise.all(
+        games.map((game) => {
+          if (!game.team1_id || !game.team2_id) return Promise.resolve();
+          const t1 = game.GameDetail.filter((d) => d.team_id === game.team1_id).length;
+          const t2 = game.GameDetail.filter((d) => d.team_id === game.team2_id).length;
+          const winner = t1 > t2 ? game.team1_id : t2 > t1 ? game.team2_id : null;
+          return tx.game.update({ where: { id: game.id }, data: { winner_team_id: winner } });
+        })
+      );
     });
 
     const participants = await db.matchParticipant.findMany({

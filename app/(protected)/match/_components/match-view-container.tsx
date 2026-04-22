@@ -10,9 +10,10 @@ interface MatchViewContainerProps {
   matches: MatchItem[];
   joinedMatchIds: number[];
   defaultView: string;
+  canCreate?: boolean;
 }
 
-export function MatchViewContainer({ matches, joinedMatchIds, defaultView }: MatchViewContainerProps) {
+export function MatchViewContainer({ matches, joinedMatchIds, defaultView, canCreate = false }: MatchViewContainerProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -32,7 +33,7 @@ export function MatchViewContainer({ matches, joinedMatchIds, defaultView }: Mat
         <MatchListView matches={matches} joinedMatchIds={joinedMatchIds} />
       </TabsContent>
       <TabsContent value="calendario">
-        <MatchCalendarView matches={matches} joinedMatchIds={joinedMatchIds} />
+        <MatchCalendarView matches={matches} joinedMatchIds={joinedMatchIds} canCreate={canCreate} />
       </TabsContent>
     </Tabs>
   );

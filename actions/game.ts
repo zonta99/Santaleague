@@ -34,6 +34,10 @@ export const addGameDetail = async (values: z.infer<typeof GameDetailSchema>) =>
   const allowed = await canPerformLeagueAction(leagueId, "manageGameEvents");
   if (!allowed) return { error: "Non autorizzato" };
 
+  const game = await db.game.findUnique({ where: { id: game_id }, select: { status: true } });
+  if (!game) return { error: "Partita non trovata" };
+  if (game.status !== "ONGOING") return { error: "Non è possibile aggiungere eventi a una partita non in corso" };
+
   await db.gameDetail.create({
     data: {
       game_id,

@@ -32,6 +32,7 @@ model User {
   NotificationPreferences NotificationPreferences?
   LeagueMember            LeagueMember[]
   LeagueInviteSent        LeagueInvite[]
+  LeagueJoinRequest       LeagueJoinRequest[]
 }
 
 model Account {
@@ -86,18 +87,21 @@ model TwoFactorConfirmation {
 }
 
 model League {
-  id          String         @id @default(cuid())
-  name        String
-  slug        String         @unique
-  description String?
-  logo        String?
-  created_at  DateTime       @default(now())
-  LeagueMember LeagueMember[]
-  Season      Season[]
-  Location    Location[]
-  LevelFormula LevelFormula[]
-  Badge       Badge[]
-  LeagueInvite LeagueInvite[]
+  id                 String              @id @default(cuid())
+  name               String
+  slug               String              @unique
+  description        String?
+  logo               String?
+  created_at         DateTime            @default(now())
+  public_invite_token String?            @unique
+  LeagueMember       LeagueMember[]
+  Season             Season[]
+  Match              Match[]
+  Location           Location[]
+  LevelFormula       LevelFormula[]
+  Badge              Badge[]
+  LeagueInvite       LeagueInvite[]
+  LeagueJoinRequest  LeagueJoinRequest[]
 }
 
 model LeagueMember {
@@ -153,7 +157,7 @@ model Match {
   mvp_id             String?
   status             MatchStatus        @default(SCHEDULED)
   location_id        Int?
-  match_type         String             @default("normal")
+  match_type         MatchType          @default(normal)
   season_id          Int?
   created_at         DateTime?          @default(now()) @db.Timestamptz(6)
   updated_at         DateTime?          @default(now()) @db.Timestamptz(6)
@@ -163,13 +167,17 @@ model Match {
   players_per_team   Int                @default(5)
   rating_open        Boolean            @default(false)
   rating_opened_at   DateTime?
+  league_id          String?
   DraftPick          DraftPick[]
   MatchRating        MatchRating[]
   Game               Game[]
   Location           Location?          @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   User               User?              @relation(fields: [mvp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   Season             Season?            @relation(fields: [season_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  League             League?            @relation(fields: [league_id], references: [id], onDelete: SetNull)
   MatchParticipant   MatchParticipant[]
+
+  @@index([league_id])
 }
 
 model MatchParticipant {
@@ -339,7 +347,21 @@ model NotificationPreferences {
   draft_picked       Boolean @default(true)
   match_completed    Boolean @default(true)
   admin_announcement Boolean @default(true)
+  join_request       Boolean @default(true)
   email_enabled      Boolean @default(true)
+}
+
+model LeagueJoinRequest {
+  id         String            @id @default(cuid())
+  league_id  String
+  user_id    String
+  status     JoinRequestStatus @default(PENDING)
+  created_at DateTime          @default(now())
+  League     League            @relation(fields: [league_id], references: [id], onDelete: Cascade)
+  User       User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([league_id, user_id])
+  @@index([league_id])
 }
 
 model LevelFormula {
@@ -379,6 +401,11 @@ enum MatchStatus {
   CANCELED
 }
 
+enum MatchType {
+  normal
+  torneo
+}
+
 enum GameEventType {
   Goal
   Penalty
@@ -400,4 +427,11 @@ enum NotificationType {
   DRAFT_PICKED
   MATCH_COMPLETED
   ADMIN_ANNOUNCEMENT
+  JOIN_REQUEST
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }

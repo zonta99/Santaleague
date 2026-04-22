@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Trophy, Star, Target } from "lucide-react";
+import { Trophy, Star, Target, Crown } from "lucide-react";
 
 type GameDetailItem = {
   event_type: string;
@@ -30,6 +30,8 @@ type GameItem = {
 interface Props {
   games: GameItem[];
   matchRatings: GameRatingItem[];
+  mvp: { id: string; name: string | null; image: string | null } | null;
+  ratingClosed: boolean;
 }
 
 function PlayerAvatar({ name, image, size = 28 }: { name: string | null; image: string | null; size?: number }) {
@@ -42,7 +44,7 @@ function PlayerAvatar({ name, image, size = 28 }: { name: string | null; image: 
   );
 }
 
-export function TabRiepilogo({ games, matchRatings }: Props) {
+export function TabRiepilogo({ games, matchRatings, mvp, ratingClosed }: Props) {
   // Per-game results
   const gameResults = games.map((game) => {
     const t1Goals = game.GameDetail.filter((d) => d.event_type === "Goal" && d.team_id === game.team1_id).length;
@@ -121,6 +123,27 @@ export function TabRiepilogo({ games, matchRatings }: Props) {
             ) : null}
           </div>
         ))}
+      </section>
+
+      {/* MVP */}
+      <section>
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium mb-3">MVP</p>
+        {mvp ? (
+          <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-500/20 border border-amber-400/30 flex items-center justify-center shrink-0">
+              <Crown className="w-5 h-5 text-amber-400" />
+            </div>
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              <PlayerAvatar name={mvp.name} image={mvp.image} size={28} />
+              <span className="text-base font-bold truncate">{mvp.name}</span>
+            </div>
+            <span className="text-xs text-amber-400 font-semibold shrink-0">MVP</span>
+          </div>
+        ) : ratingClosed ? (
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3">
+            <p className="text-sm text-muted-foreground">Nessun MVP — votazioni insufficienti.</p>
+          </div>
+        ) : null}
       </section>
 
       {/* Awards */}

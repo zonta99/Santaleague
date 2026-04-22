@@ -39,3 +39,27 @@ export const updateLevelFormula = async (values: z.infer<typeof LevelFormulaSche
   revalidatePath("/admin");
   return { success: "Formula aggiornata" };
 };
+
+export const updateLeagueLevelFormula = async (leagueId: string, values: z.infer<typeof LevelFormulaSchema>) => {
+  const { canPerformLeagueAction } = await import("@/lib/league-auth");
+  const allowed = await canPerformLeagueAction(leagueId, "manageSeasons");
+  if (!allowed) return { error: "Non autorizzato" };
+
+  const parsed = LevelFormulaSchema.safeParse(values);
+  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? "Valori non validi" };
+
+  const user = await currentUser();
+  const existing = await db.levelFormula.findUnique({ where: { league_id: leagueId } });
+
+  if (existing) {
+    await db.levelFormula.update({
+      where: { league_id: leagueId },
+      data: { ...parsed.data, updated_by: user?.id ?? null },
+    });
+  }
+
+  revalidatePath("/leaderboard");
+  revalidatePath("/player");
+  revalidatePath("/admin");
+  return { success: "Formula aggiornata" };
+};

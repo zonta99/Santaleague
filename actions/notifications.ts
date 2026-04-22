@@ -15,6 +15,7 @@ const notificationTypeToPreferenceKey: Record<NotificationType, keyof typeof pre
   DRAFT_PICKED: "draft_picked",
   MATCH_COMPLETED: "match_completed",
   ADMIN_ANNOUNCEMENT: "admin_announcement",
+  JOIN_REQUEST: "join_request",
 };
 
 const prefFields = {
@@ -23,6 +24,7 @@ const prefFields = {
   draft_picked: true,
   match_completed: true,
   admin_announcement: true,
+  join_request: true,
 };
 
 export async function createNotificationsForUsers(
