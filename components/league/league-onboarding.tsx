@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
 import { Shield, Users, ChevronRight } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createLeague, acceptInvite, setActiveLeagueAction } from "@/actions/league";
+import { createLeague, acceptInvite } from "@/actions/league";
 import type { League, LeagueMember } from "@prisma/client";
 
 type Membership = LeagueMember & { League: League };
@@ -19,7 +18,6 @@ interface LeagueOnboardingProps {
 }
 
 export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -32,8 +30,7 @@ export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
       const result = await createLeague(createForm);
       if (result.error) { setError(result.error); return; }
       if (result.leagueId) {
-        await setActiveLeagueAction(result.leagueId);
-        router.push("/dashboard");
+        window.location.href = `/api/league/activate?id=${result.leagueId}&redirect=/dashboard`;
       }
     });
   };
@@ -44,8 +41,7 @@ export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
       const result = await acceptInvite(inviteToken.trim());
       if (result.error) { setError(result.error); return; }
       if (result.leagueId) {
-        await setActiveLeagueAction(result.leagueId);
-        router.push("/dashboard");
+        window.location.href = `/api/league/activate?id=${result.leagueId}&redirect=/dashboard`;
       }
     });
   };
@@ -54,11 +50,14 @@ export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
     name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
   const handleSelect = (leagueId: string) => {
-    startTransition(async () => {
-      await setActiveLeagueAction(leagueId);
-      router.push("/dashboard");
-    });
+    window.location.href = `/api/league/activate?id=${leagueId}&redirect=/dashboard`;
   };
+
+  useEffect(() => {
+    if (memberships.length === 1) {
+      window.location.href = `/api/league/activate?id=${memberships[0].league_id}&redirect=/dashboard`;
+    }
+  }, [memberships]);
 
   return (
     <div className="w-full space-y-4">

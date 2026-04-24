@@ -170,7 +170,7 @@ export default async function PlayerProfilePage({
 
       <SeasonBreakdown userId={id} leagueId={leagueId!} />
 
-      <HeadToHead userId={id} allPlayers={otherPlayers} />
+      <HeadToHead userId={id} allPlayers={otherPlayers} leagueId={leagueId!} />
 
       <section className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Storico partite</h2>

@@ -5,12 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
-import { updateLevelFormula, updateLeagueLevelFormula } from "@/actions/level-formula";
+import { updateLeagueLevelFormula } from "@/actions/level-formula";
 import { BarChart2 } from "lucide-react";
 
 interface Props {
   initial: { field_weight: number; win_weight: number; goal_weight: number; updated_at: Date | null };
-  leagueId?: string;
+  leagueId: string;
 }
 
 export function LevelFormulaManager({ initial, leagueId }: Props) {
@@ -26,9 +26,7 @@ export function LevelFormulaManager({ initial, leagueId }: Props) {
     if (!isValid) return;
     startTransition(async () => {
       const values = { field_weight: fieldW / 100, win_weight: winW / 100, goal_weight: goalW / 100 };
-      const result = leagueId
-        ? await updateLeagueLevelFormula(leagueId, values)
-        : await updateLevelFormula(values);
+      const result = await updateLeagueLevelFormula(leagueId, values);
       if (result?.error) toast.error(result.error);
       else toast.success(result?.success ?? "Salvato");
     });

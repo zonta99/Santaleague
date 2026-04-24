@@ -42,7 +42,7 @@ export const getPlayerLevel = async (
   seasonId?: number
 ): Promise<{ level: number; tier: Tier }> => {
   const matchFilter = seasonId
-    ? { status: "COMPLETED" as const, season_id: seasonId }
+    ? { status: "COMPLETED" as const, season_id: seasonId, Season: { league_id: leagueId } }
     : { status: "COMPLETED" as const, Season: { league_id: leagueId } };
 
   const picks = await db.draftPick.findMany({
@@ -89,7 +89,7 @@ export const getPlayerLevel = async (
 
 export const getLeaderboard = async (leagueId: string, seasonId?: number) => {
   const matchFilter = seasonId
-    ? { status: "COMPLETED" as const, season_id: seasonId }
+    ? { status: "COMPLETED" as const, season_id: seasonId, Season: { league_id: leagueId } }
     : { status: "COMPLETED" as const, Season: { league_id: leagueId } };
 
   const details = await db.gameDetail.findMany({
@@ -131,12 +131,14 @@ export const getLeaderboard = async (leagueId: string, seasonId?: number) => {
     else entry.gkScores.push(r.score);
   }
 
-  const mvpCounts = await db.game.groupBy({
-    by: ["mvp_id"],
-    where: { mvp_id: { not: null }, Match: matchFilter },
-    _count: { mvp_id: true },
+  const mvpMatches = await db.match.findMany({
+    where: { mvp_id: { not: null }, ...matchFilter },
+    select: { mvp_id: true },
   });
-  const mvpMap = new Map(mvpCounts.map((r) => [r.mvp_id!, r._count.mvp_id]));
+  const mvpMap = new Map<string, number>();
+  for (const m of mvpMatches) {
+    if (m.mvp_id) mvpMap.set(m.mvp_id, (mvpMap.get(m.mvp_id) ?? 0) + 1);
+  }
 
   const goalMap = new Map<string, { user: { id: string; name: string | null; image: string | null }; goals: number }>();
   for (const d of details) {
@@ -156,7 +158,15 @@ export const getLeaderboard = async (leagueId: string, seasonId?: number) => {
     }
   }
 
-  const allUserIds = new Set([...Array.from(goalMap.keys()), ...Array.from(winMap.keys())]);
+  const draftParticipants = await db.draftPick.findMany({
+    where: { Match: matchFilter },
+    select: { user_id: true },
+  });
+  const allUserIds = new Set([
+    ...draftParticipants.map((p) => p.user_id),
+    ...Array.from(goalMap.keys()),
+    ...Array.from(winMap.keys()),
+  ]);
 
   const missingIds = Array.from(allUserIds).filter((id) => !goalMap.has(id));
   if (missingIds.length > 0) {
@@ -200,7 +210,7 @@ export const getLeaderboard = async (leagueId: string, seasonId?: number) => {
 
 export const getPlayerProfile = async (userId: string, leagueId: string, seasonId?: number) => {
   const matchFilter = seasonId
-    ? { status: "COMPLETED" as const, season_id: seasonId }
+    ? { status: "COMPLETED" as const, season_id: seasonId, Season: { league_id: leagueId } }
     : { status: "COMPLETED" as const, Season: { league_id: leagueId } };
 
   const [user, goalDetails, draftHistory] = await Promise.all([
@@ -246,7 +256,7 @@ export const getPlayerProfile = async (userId: string, leagueId: string, seasonI
     }),
   ]);
 
-  const avg = (scores: number[]) => scores.reduce((a, b) => a + b, 0) / scores.length;
+  const avg = (scores: number[]) => scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
 
   const matchRows = draftHistory.map(({ Match: m, Team, team_id }) => {
     const goals = m.Game.flatMap((g) => g.GameDetail).length;
@@ -265,8 +275,8 @@ export const getPlayerProfile = async (userId: string, leagueId: string, seasonI
       goals,
       wins,
       points: goals * 3 + wins,
-      avgFieldRating: matchFieldScores.length ? Math.round(avg(matchFieldScores) * 10) / 10 : null,
-      avgGkRating: matchGkScores.length ? Math.round(avg(matchGkScores) * 10) / 10 : null,
+      avgFieldRating: matchFieldScores.length ? Math.round(avg(matchFieldScores)! * 10) / 10 : null,
+      avgGkRating: matchGkScores.length ? Math.round(avg(matchGkScores)! * 10) / 10 : null,
     };
   });
 
@@ -276,7 +286,7 @@ export const getPlayerProfile = async (userId: string, leagueId: string, seasonI
   const ratingTrend = draftHistory
     .map(({ Match: m }) => {
       const fieldScores = m.MatchRating.filter((r) => r.role === RatingRole.FIELD).map((r) => r.score);
-      return fieldScores.length ? { date: m.date, avgRating: Math.round(avg(fieldScores) * 10) / 10 } : null;
+      return fieldScores.length ? { date: m.date, avgRating: Math.round(avg(fieldScores)! * 10) / 10 } : null;
     })
     .filter((x): x is NonNullable<typeof x> => x !== null)
     .slice(0, 10)
@@ -298,10 +308,11 @@ export const getPlayerProfile = async (userId: string, leagueId: string, seasonI
   };
 };
 
-export const getHeadToHead = async (userId: string, opponentId: string) => {
+export const getHeadToHead = async (userId: string, opponentId: string, leagueId: string) => {
+  const leagueMatchFilter = { Match: { Season: { league_id: leagueId } } };
   const [userPicks, opponentPicks] = await Promise.all([
-    db.draftPick.findMany({ where: { user_id: userId }, select: { match_id: true, team_id: true } }),
-    db.draftPick.findMany({ where: { user_id: opponentId }, select: { match_id: true, team_id: true } }),
+    db.draftPick.findMany({ where: { user_id: userId, ...leagueMatchFilter }, select: { match_id: true, team_id: true } }),
+    db.draftPick.findMany({ where: { user_id: opponentId, ...leagueMatchFilter }, select: { match_id: true, team_id: true } }),
   ]);
 
   const userMatchMap = new Map(userPicks.map((p) => [p.match_id, p.team_id]));
@@ -337,7 +348,7 @@ export const getHeadToHead = async (userId: string, opponentId: string) => {
 
 export const getAdminDashboardStats = async (leagueId: string, seasonId?: number) => {
   const leagueFilter = seasonId
-    ? { season_id: seasonId }
+    ? { season_id: seasonId, Season: { league_id: leagueId } }
     : { Season: { league_id: leagueId } };
   const completedFilter = { ...leagueFilter, status: "COMPLETED" as const };
 
@@ -371,7 +382,7 @@ export const getAdminDashboardStats = async (leagueId: string, seasonId?: number
 export const getUserStats = async (userId: string, leagueId: string) => {
   const [matchesPlayed, goals, nextMatch] = await Promise.all([
     db.matchParticipant.count({
-      where: { user_id: userId, Match: { Season: { league_id: leagueId } } },
+      where: { user_id: userId, Match: { status: "COMPLETED", Season: { league_id: leagueId } } },
     }),
     db.gameDetail.count({
       where: {

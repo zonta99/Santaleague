@@ -18,6 +18,9 @@ export const createSeason = async (values: z.infer<typeof SeasonSchema>, leagueI
 
   const { name, start_date, end_date } = parsed.data;
 
+  const activeSeason = await db.season.findFirst({ where: { league_id: leagueId, status: "ACTIVE" } });
+  if (activeSeason) return { error: "Esiste già una stagione attiva. Chiudila prima di crearne una nuova." };
+
   try {
     await db.season.create({
       data: {
@@ -74,12 +77,14 @@ export const closeSeason = async (id: number) => {
   const leaderboard = await getLeaderboard(season.league_id, id);
   const champion_id = leaderboard[0]?.user?.id ?? null;
 
+  // Award badges before closing so idempotency check (season.status === "COMPLETED") doesn't block retries
+  await awardSeasonBadges(id, season.league_id);
+
+  // Close the season atomically — if this fails after badge award, awardSeasonBadges is idempotent
   await db.season.update({
-    where: { id },
+    where: { id, status: "ACTIVE" },
     data: { status: "COMPLETED", champion_id },
   });
-
-  await awardSeasonBadges(id, season.league_id);
 
   revalidatePath("/admin");
   revalidatePath("/leaderboard");

@@ -12,9 +12,10 @@ type Opponent = { id: string; name: string | null; image: string | null };
 interface Props {
   userId: string;
   allPlayers: Opponent[];
+  leagueId: string;
 }
 
-export function HeadToHead({ userId, allPlayers }: Props) {
+export function HeadToHead({ userId, allPlayers, leagueId }: Props) {
   const [opponentId, setOpponentId] = useState<string>("");
   const [result, setResult] = useState<{ total: number; sameTeam: number; opposing: number; userWins: number } | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -25,7 +26,7 @@ export function HeadToHead({ userId, allPlayers }: Props) {
     setOpponentId(id);
     if (!id) { setResult(null); return; }
     startTransition(async () => {
-      const data = await getHeadToHeadAction(userId, id);
+      const data = await getHeadToHeadAction(userId, id, leagueId);
       setResult(data);
     });
   }

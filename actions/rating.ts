@@ -27,13 +27,6 @@ export const submitRatings = async (
     select: { rating_open: true, rating_opened_at: true, Season: { select: { league_id: true } } },
   });
   if (!match) return { error: "Match non trovato" };
-  if (!match.rating_open) return { error: "La finestra di valutazione è chiusa" };
-
-  if (match.rating_opened_at) {
-    const diff = Date.now() - new Date(match.rating_opened_at).getTime();
-    if (diff > 48 * 60 * 60 * 1000) return { error: "Finestra di valutazione scaduta" };
-  }
-
   if (match.Season?.league_id) {
     const member = await getLeagueMember(match.Season.league_id, user.id);
     if (!member) return { error: "Non sei membro di questa lega" };
@@ -44,31 +37,44 @@ export const submitRatings = async (
   });
   if (!isParticipant) return { error: "Non sei un partecipante di questa partita" };
 
+  if (!match.rating_open) return { error: "La finestra di valutazione è chiusa" };
+
+  if (match.rating_opened_at) {
+    const diff = Date.now() - new Date(match.rating_opened_at).getTime();
+    if (diff > 48 * 60 * 60 * 1000) return { error: "Finestra di valutazione scaduta" };
+  }
+
   const parsed = z.array(RatingEntrySchema).safeParse(ratings);
   if (!parsed.success) return { error: "Dati non validi" };
 
-  const filtered = parsed.data.filter((r) => r.rated_player_id !== user.id);
+  const participants = await db.matchParticipant.findMany({
+    where: { match_id: matchId },
+    select: { user_id: true },
+  });
+  const participantIds = new Set(participants.map((p) => p.user_id));
 
-  for (const r of filtered) {
-    await db.matchRating.upsert({
+  const filtered = parsed.data.filter(
+    (r) => r.rated_player_id !== user.id && participantIds.has(r.rated_player_id)
+  );
+
+  await db.$transaction(async (tx) => {
+    await tx.matchRating.deleteMany({
       where: {
-        match_id_rater_id_rated_player_id_role: {
-          match_id: matchId,
-          rater_id: user.id!,
-          rated_player_id: r.rated_player_id,
-          role: r.role,
-        },
+        match_id: matchId,
+        rater_id: user.id!,
+        rated_player_id: { in: filtered.map((r) => r.rated_player_id) },
       },
-      create: {
+    });
+    await tx.matchRating.createMany({
+      data: filtered.map((r) => ({
         match_id: matchId,
         rater_id: user.id!,
         rated_player_id: r.rated_player_id,
         score: r.score,
         role: r.role,
-      },
-      update: { score: r.score },
+      })),
     });
-  }
+  });
 
   const leagueId = match.Season?.league_id ?? "";
   const ratedPlayerIds = Array.from(new Set(filtered.map((r) => r.rated_player_id)));
@@ -115,7 +121,7 @@ export const computeAndSetMvp = async (matchId: number) => {
       select: { rated_player_id: true, score: true, role: true },
     }),
     db.gameDetail.findMany({
-      where: { Match: { id: matchId }, event_type: "Goal" },
+      where: { Game: { match_id: matchId }, event_type: "Goal" },
       select: { player_id: true },
     }),
   ]);
@@ -134,12 +140,12 @@ export const computeAndSetMvp = async (matchId: number) => {
   const avg = (arr: number[]) => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
 
   const ratingMap = new Map<string, number>();
-  for (const [userId, { field, gk }] of byPlayer) {
+  for (const [userId, { field, gk }] of Array.from(byPlayer)) {
     const avgField = avg(field);
     const avgGk = avg(gk);
     const combined =
       avgField !== null && avgGk !== null ? (avgField + avgGk) / 2
-      : avgField ?? avgGk!;
+      : avgField ?? avgGk ?? 0;
     ratingMap.set(userId, combined);
   }
 
@@ -149,7 +155,7 @@ export const computeAndSetMvp = async (matchId: number) => {
     if (d.player_id) goalMap.set(d.player_id, (goalMap.get(d.player_id) ?? 0) + 1);
   }
 
-  const maxGoals = Math.max(1, ...goalMap.values());
+  const maxGoals = Math.max(1, ...Array.from(goalMap.values()));
 
   // Score = avg_combined_rating * 0.7 + (goals / maxGoals) * 10 * 0.3
   const scores = Array.from(ratingMap.entries()).map(([userId, avgRating]) => {
@@ -161,7 +167,8 @@ export const computeAndSetMvp = async (matchId: number) => {
   const mvp = scores.sort((a, b) => b.score - a.score)[0];
   if (!mvp) return;
 
-  await db.match.update({ where: { id: matchId }, data: { mvp_id: mvp.userId } });
+  // Atomic guard: only write if mvp_id is still null (handles concurrent calls)
+  await db.match.updateMany({ where: { id: matchId, mvp_id: null }, data: { mvp_id: mvp.userId } });
 };
 
 /**

@@ -68,6 +68,7 @@ export const joinMatch = async (matchId: number) => {
       status: true,
       num_teams: true,
       players_per_team: true,
+      league_id: true,
       Season: { select: { league_id: true } },
       _count: { select: { MatchParticipant: true } },
     },
@@ -77,11 +78,12 @@ export const joinMatch = async (matchId: number) => {
 
   const capacity = (match.num_teams ?? 2) * (match.players_per_team ?? 1);
   if (match._count.MatchParticipant >= capacity) {
-    return { error: `Partita al completo (${capacity} posti disponibili)` };
+    return { error: `Partita al completo` };
   }
 
-  if (match.Season?.league_id) {
-    const member = await getLeagueMember(match.Season.league_id, user.id);
+  const leagueId = match.Season?.league_id ?? match.league_id;
+  if (leagueId) {
+    const member = await getLeagueMember(leagueId, user.id);
     if (!member) return { error: "Non sei membro di questa lega" };
   }
 
@@ -100,20 +102,36 @@ export const joinMatch = async (matchId: number) => {
 export const updateMatchStatus = async (matchId: number, status: "SCHEDULED" | "ONGOING" | "COMPLETED" | "CANCELED") => {
   const match = await db.match.findUnique({
     where: { id: matchId },
-    select: { status: true, draft_locked: true, Season: { select: { league_id: true } } },
+    select: { status: true, draft_locked: true, league_id: true, Season: { select: { league_id: true } } },
   });
   if (!match) return { error: "Partita non trovata" };
 
-  const leagueId = match.Season?.league_id ?? "";
+  const leagueId = match.Season?.league_id ?? match.league_id ?? "";
   const allowed = await canPerformLeagueAction(leagueId, "updateMatchStatus");
   if (!allowed) return { error: "Non autorizzato" };
+
+  if (match.status === "CANCELED") {
+    return { error: "Non è possibile modificare una partita annullata" };
+  }
+  const ORDER = { SCHEDULED: 0, ONGOING: 1, COMPLETED: 2, CANCELED: 3 };
+  if (ORDER[status] < ORDER[match.status as keyof typeof ORDER]) {
+    return { error: "Non è possibile tornare a uno stato precedente" };
+  }
 
   if (status === "ONGOING" && !match.draft_locked) {
     return { error: "Il draft deve essere bloccato prima di iniziare la partita" };
   }
 
   await db.match.update({ where: { id: matchId }, data: { status } });
-  await db.game.updateMany({ where: { match_id: matchId }, data: { status } });
+  if (status === "COMPLETED") {
+    await db.game.updateMany({ where: { match_id: matchId, status: { not: "COMPLETED" } }, data: { status: "COMPLETED" } });
+  } else if (status === "CANCELED") {
+    // Close ratings and only cancel games not already completed
+    await db.match.update({ where: { id: matchId }, data: { rating_open: false } });
+    await db.game.updateMany({ where: { match_id: matchId, status: { not: "COMPLETED" } }, data: { status: "CANCELED" } });
+  } else {
+    await db.game.updateMany({ where: { match_id: matchId }, data: { status } });
+  }
 
   if (status === "ONGOING") {
     const participants = await db.matchParticipant.findMany({
@@ -180,6 +198,10 @@ export const updateMatchStatus = async (matchId: number, status: "SCHEDULED" | "
 export const leaveMatch = async (matchId: number) => {
   const user = await currentUser();
   if (!user?.id) return { error: "Non autenticato" };
+
+  const match = await db.match.findUnique({ where: { id: matchId }, select: { status: true } });
+  if (!match) return { error: "Partita non trovata" };
+  if (match.status !== "SCHEDULED") return { error: "Non puoi abbandonare una partita già iniziata o completata" };
 
   await db.matchParticipant.deleteMany({
     where: { match_id: matchId, user_id: user.id },

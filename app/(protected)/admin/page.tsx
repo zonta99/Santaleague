@@ -37,7 +37,7 @@ const AdminPage = async ({ searchParams }: AdminPageProps) => {
   if ((activeTab === "users" || activeTab === "settings" || activeTab === "leagues") && !isGlobalAdmin) {
     redirect("/admin?tab=overview");
   }
-  if ((activeTab === "members" || activeTab === "league") && (!isLeagueAdmin || isGlobalAdmin)) {
+  if ((activeTab === "members" || activeTab === "league") && !isLeagueAdmin && !isGlobalAdmin) {
     redirect("/admin?tab=overview");
   }
 
@@ -71,16 +71,20 @@ const AdminPage = async ({ searchParams }: AdminPageProps) => {
           )}
           {activeTab === "leagues" && isGlobalAdmin && (
             <LeaguesTabShell leagues={allLeagues} selectedLeagueId={selectedLeagueId}>
-              <LeagueTab leagueId={selectedLeagueId!} isOwner={true} />
-              <MembersTab
-                leagueId={selectedLeagueId!}
-                currentUserId={user!.id!}
-                currentUserRole={LeagueRole.OWNER}
-              />
+              {selectedLeagueId && (
+                <>
+                  <LeagueTab leagueId={selectedLeagueId} isOwner={true} />
+                  <MembersTab
+                    leagueId={selectedLeagueId}
+                    currentUserId={user!.id!}
+                    currentUserRole={LeagueRole.OWNER}
+                  />
+                </>
+              )}
             </LeaguesTabShell>
           )}
           {activeTab === "users" && role === UserRole.ADMIN && <UsersTab />}
-          {activeTab === "settings" && role === UserRole.ADMIN && <SettingsTab />}
+          {activeTab === "settings" && role === UserRole.ADMIN && leagueId && <SettingsTab leagueId={leagueId} />}
         </AdminTabs>
       </Suspense>
     </div>

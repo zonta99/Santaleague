@@ -1,7 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { currentRole } from "@/lib/auth";
-import { UserRole } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Users } from "lucide-react";
@@ -10,15 +8,13 @@ import { DraftBoard } from "./_components/draft-board";
 import { getPlayerLevel } from "@/data/stats";
 import { db } from "@/lib/db";
 import { TierBadge } from "@/components/tier-badge";
+import { canPerformLeagueAction } from "@/lib/league-auth";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
 export default async function DraftPage({ params }: Props) {
-  const role = await currentRole();
-  if (role !== UserRole.ADMIN) redirect("/dashboard");
-
   const { id } = await params;
   const matchId = parseInt(id, 10);
   if (isNaN(matchId)) notFound();
@@ -50,6 +46,12 @@ export default async function DraftPage({ params }: Props) {
 
   if (!match) notFound();
 
+  const matchLeagueId = match.season_id
+    ? (await db.season.findUnique({ where: { id: match.season_id }, select: { league_id: true } }))?.league_id ?? ""
+    : match.league_id ?? "";
+  const allowed = await canPerformLeagueAction(matchLeagueId, "executeDraft");
+  if (!allowed) redirect("/dashboard");
+
   const hasDraft = match.DraftPick.length > 0;
   const isLocked = match.draft_locked;
 
@@ -63,14 +65,11 @@ export default async function DraftPage({ params }: Props) {
     : `Partecipanti insufficienti: ${actual}/${required} (${numTeams} squadre × ${playersPerTeam} giocatori)`;
 
   // Fetch player levels for all participants
-  const season = match.season_id
-    ? await db.season.findUnique({ where: { id: match.season_id }, select: { league_id: true } })
-    : null;
-  const leagueId = season?.league_id ?? "";
   const participantUserIds = match.MatchParticipant.map((p) => p.user_id);
+  const seasonId = match.season_id ?? undefined;
   const levelResults = await Promise.all(
     participantUserIds.map(async (uid) => {
-      const { level, tier } = await getPlayerLevel(uid, leagueId);
+      const { level, tier } = await getPlayerLevel(uid, matchLeagueId, seasonId);
       return [uid, { level, tier }] as const;
     })
   );

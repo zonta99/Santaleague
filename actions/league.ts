@@ -22,8 +22,8 @@ export const setActiveLeagueAction = async (leagueId: string) => {
   if (!member) return { error: "Non sei membro di questa lega" };
 
   const jar = await cookies();
-  jar.set("active-league", JSON.stringify({ leagueId, role: member.role }), {
-    httpOnly: false,
+  jar.set("active-league", JSON.stringify({ leagueId }), {
+    httpOnly: true,
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
@@ -97,14 +97,23 @@ export const inviteMember = async (leagueId: string, values: { email: string; ro
     if (alreadyMember) return { error: "Questo utente è già membro della lega" };
   }
 
-  const invite = await generateLeagueInviteToken(
-    parsed.data.email,
-    leagueId,
-    parsed.data.role as LeagueRole,
-    user.id
-  );
+  const existingInvite = await db.leagueInvite.findFirst({
+    where: { email: parsed.data.email, league_id: leagueId },
+  });
+  if (existingInvite) return { error: "Un invito per questo indirizzo email è già in attesa" };
 
-  await sendLeagueInviteEmail(parsed.data.email, league.name, user.name, invite.token);
+  try {
+    const invite = await generateLeagueInviteToken(
+      parsed.data.email,
+      leagueId,
+      parsed.data.role as LeagueRole,
+      user.id
+    );
+
+    await sendLeagueInviteEmail(parsed.data.email, league.name, user.name, invite.token);
+  } catch {
+    return { error: "Impossibile inviare l'invito. Riprova." };
+  }
   return { success: "Invito inviato!" };
 };
 
@@ -154,6 +163,12 @@ export const promoteMember = async (leagueId: string, userId: string, role: Leag
   const allowed = await canPerformLeagueAction(leagueId, "manageMembers");
   if (!allowed) return { error: "Non autorizzato" };
 
+  const target = await db.leagueMember.findUnique({
+    where: { league_id_user_id: { league_id: leagueId, user_id: userId } },
+    select: { role: true },
+  });
+  if (target?.role === LeagueRole.OWNER) return { error: "Non puoi modificare il ruolo di un proprietario" };
+
   await db.leagueMember.update({
     where: { league_id_user_id: { league_id: leagueId, user_id: userId } },
     data: { role },
@@ -170,8 +185,8 @@ export const leaveLeague = async (leagueId: string) => {
   if (!member) return { error: "Non sei membro di questa lega" };
 
   if (member.role === LeagueRole.OWNER) {
-    const others = await db.leagueMember.count({ where: { league_id: leagueId } });
-    if (others > 1) return { error: "Trasferisci la proprietà prima di uscire dalla lega" };
+    const memberCount = await db.leagueMember.count({ where: { league_id: leagueId } });
+    if (memberCount - 1 > 0) return { error: "Trasferisci la proprietà prima di uscire dalla lega" };
   }
 
   await db.leagueMember.delete({
@@ -230,6 +245,7 @@ export const requestJoinLeague = async (token: string) => {
   });
   if (existing) {
     if (existing.status === "PENDING") return { success: "Richiesta già inviata, attendi l'approvazione" };
+    if (existing.status === "APPROVED") return { success: "Sei già membro di questa lega", leagueId: league.id };
     if (existing.status === "REJECTED") return { error: "La tua richiesta è stata rifiutata" };
   }
 
