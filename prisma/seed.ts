@@ -50,7 +50,6 @@ async function cleanDatabase() {
   await prisma.notification.deleteMany();
   await prisma.notificationPreferences.deleteMany();
   await prisma.season.deleteMany();
-  await prisma.leagueInvite.deleteMany();
   await prisma.leagueMember.deleteMany();
   await prisma.league.deleteMany();
   await prisma.twoFactorConfirmation.deleteMany();

@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getLeagueByPublicToken } from "@/data/league";
 import { JoinRequestForm } from "@/components/league/join-request-form";
+import { JoinAuthGate } from "@/components/league/join-auth-gate";
 
 interface Props {
   searchParams: Promise<{ token?: string }>;
@@ -30,13 +30,13 @@ export default async function JoinLeaguePage({ searchParams }: Props) {
 
   const session = await auth();
 
-  if (!session?.user) {
-    redirect(`/auth/login?callbackUrl=/leagues/join?token=${token}`);
-  }
-
   return (
     <div className="flex items-center justify-center min-h-screen">
-      <JoinRequestForm token={token} leagueName={league.name} leagueDescription={league.description} />
+      {session?.user ? (
+        <JoinRequestForm token={token} leagueName={league.name} leagueDescription={league.description} />
+      ) : (
+        <JoinAuthGate token={token} leagueName={league.name} leagueDescription={league.description} />
+      )}
     </div>
   );
 }

@@ -61,6 +61,8 @@ const nextAuth = NextAuth({
         session.user.name = token.name;
         session.user.email = token.email as string;
         session.user.isOAuth = token.isOAuth as boolean;
+        session.user.nickname = (token.nickname as string | null | undefined) ?? null;
+        session.user.nicknameChangedAt = (token.nicknameChangedAt as string | null | undefined) ?? null;
       }
 
       return session;
@@ -70,7 +72,13 @@ const nextAuth = NextAuth({
 
       const existingUser = await getUserById(token.sub);
 
-      if (!existingUser) return null;
+      if (!existingUser) {
+        // Tolerate the brief race between OAuth signIn and the Prisma adapter writing
+        // the user row: keep a freshly-issued token, only invalidate if it's truly stale.
+        const issuedAt = (token.iat as number | undefined) ?? 0;
+        const ageSec = Date.now() / 1000 - issuedAt;
+        return ageSec < 30 ? token : null;
+      }
 
       const existingAccount = await getAccountByUserId(
         existingUser.id
@@ -81,6 +89,10 @@ const nextAuth = NextAuth({
       token.email = existingUser.email;
       token.role = existingUser.role;
       token.isTwoFactorEnabled = existingUser.isTwoFactorEnabled;
+      token.nickname = existingUser.nickname;
+      token.nicknameChangedAt = existingUser.nicknameChangedAt
+        ? existingUser.nicknameChangedAt.toISOString()
+        : null;
 
       return token;
     }

@@ -30,13 +30,6 @@ export const getLeagueMembers = async (leagueId: string) => {
   });
 };
 
-export const getPendingInvites = async (leagueId: string) => {
-  return db.leagueInvite.findMany({
-    where: { league_id: leagueId },
-    orderBy: { expires: "asc" },
-  });
-};
-
 export const getLeagueByPublicToken = async (token: string) => {
   return db.league.findUnique({ where: { public_invite_token: token } });
 };

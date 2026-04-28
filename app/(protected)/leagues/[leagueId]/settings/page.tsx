@@ -2,11 +2,10 @@ import { redirect } from "next/navigation";
 import { LeagueRole } from "@prisma/client";
 
 import { currentUser } from "@/lib/auth";
-import { getLeagueById, getLeagueMember, getLeagueMembers, getPendingInvites } from "@/data/league";
+import { getLeagueById, getLeagueMember, getLeagueMembers } from "@/data/league";
 import { MembersTable } from "@/components/league/members-table";
-import { InviteForm } from "@/components/league/invite-form";
+import { PublicLinkSection } from "@/components/league/public-link-section";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 
 interface Props {
   params: Promise<{ leagueId: string }>;
@@ -17,17 +16,16 @@ export default async function LeagueSettingsPage({ params }: Props) {
   const user = await currentUser();
   if (!user?.id) redirect("/auth/login");
 
-  const [league, member, members, invites] = await Promise.all([
+  const [league, member, members] = await Promise.all([
     getLeagueById(leagueId),
     getLeagueMember(leagueId, user.id),
     getLeagueMembers(leagueId),
-    getPendingInvites(leagueId),
   ]);
 
   if (!league || !member) redirect("/leagues");
 
   const canInvite = member.role === LeagueRole.OWNER || member.role === LeagueRole.MANAGER;
-  const isOwner = member.role === LeagueRole.OWNER;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
@@ -54,11 +52,17 @@ export default async function LeagueSettingsPage({ params }: Props) {
       {canInvite && (
         <Card>
           <CardHeader>
-            <CardTitle>Invita un membro</CardTitle>
-            <CardDescription>Invia un link di invito via email. Il link scade dopo 48 ore.</CardDescription>
+            <CardTitle>Link di invito</CardTitle>
+            <CardDescription>
+              Condividi il link pubblico per far richiedere l&apos;accesso alla lega. Le richieste devono essere approvate da un admin.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <InviteForm leagueId={leagueId} pendingInvites={invites as any} />
+            <PublicLinkSection
+              leagueId={leagueId}
+              currentToken={league.public_invite_token}
+              appUrl={appUrl}
+            />
           </CardContent>
         </Card>
       )}

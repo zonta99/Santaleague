@@ -91,3 +91,30 @@ export const closeSeason = async (id: number) => {
   revalidatePath(`/season/${id}`);
   return { success: "Stagione chiusa" };
 };
+
+export const reopenSeason = async (id: number) => {
+  const season = await db.season.findUnique({ where: { id } });
+  if (!season) return { error: "Stagione non trovata" };
+  if (season.status === "ACTIVE") return { error: "Stagione già attiva" };
+
+  const allowed = await canPerformLeagueAction(season.league_id, "manageSeasons");
+  if (!allowed) return { error: "Non autorizzato" };
+
+  const activeSeason = await db.season.findFirst({
+    where: { league_id: season.league_id, status: "ACTIVE" },
+  });
+  if (activeSeason) return { error: "Esiste già una stagione attiva. Chiudila prima di riaprirne un'altra." };
+
+  await db.$transaction([
+    db.userBadge.deleteMany({ where: { season_id: id } }),
+    db.season.update({
+      where: { id },
+      data: { status: "ACTIVE", champion_id: null },
+    }),
+  ]);
+
+  revalidatePath("/admin");
+  revalidatePath("/leaderboard");
+  revalidatePath(`/season/${id}`);
+  return { success: "Stagione riaperta" };
+};

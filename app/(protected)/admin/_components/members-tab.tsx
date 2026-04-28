@@ -1,8 +1,7 @@
 import { LeagueRole } from "@prisma/client";
-import { getLeagueMembers, getPendingInvites, getPendingJoinRequests } from "@/data/league";
+import { getLeagueMembers, getPendingJoinRequests } from "@/data/league";
 import { db } from "@/lib/db";
 import { MembersTable } from "@/components/league/members-table";
-import { InviteForm } from "@/components/league/invite-form";
 import { JoinRequestsList } from "@/components/league/join-requests-list";
 import { PublicLinkSection } from "@/components/league/public-link-section";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,9 +13,8 @@ interface Props {
 }
 
 export async function MembersTab({ leagueId, currentUserId, currentUserRole }: Props) {
-  const [members, invites, joinRequests, league] = await Promise.all([
+  const [members, joinRequests, league] = await Promise.all([
     getLeagueMembers(leagueId),
-    getPendingInvites(leagueId),
     getPendingJoinRequests(leagueId),
     db.league.findUnique({ where: { id: leagueId }, select: { public_invite_token: true } }),
   ]);
@@ -62,18 +60,15 @@ export async function MembersTab({ leagueId, currentUserId, currentUserRole }: P
 
           <Card>
             <CardHeader>
-              <CardTitle>Invita un membro</CardTitle>
-              <CardDescription>Invia un link di invito via email (scade dopo 48 ore) o condividi il link pubblico.</CardDescription>
+              <CardTitle>Link di invito</CardTitle>
+              <CardDescription>Condividi il link pubblico per far richiedere l&apos;accesso alla lega.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent>
               <PublicLinkSection
                 leagueId={leagueId}
                 currentToken={league?.public_invite_token ?? null}
                 appUrl={appUrl}
               />
-              <div className="border-t border-border pt-4">
-                <InviteForm leagueId={leagueId} pendingInvites={invites as any} />
-              </div>
             </CardContent>
           </Card>
         </>

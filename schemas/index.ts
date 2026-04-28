@@ -3,8 +3,14 @@ import { UserRole } from "@prisma/client";
 
 export const SettingsSchema = z.object({
   name: z.optional(z.string()),
+  nickname: z.optional(
+    z.string()
+      .min(3, { message: "Minimo 3 caratteri" })
+      .max(20, { message: "Massimo 20 caratteri" })
+      .regex(/^[a-zA-Z0-9_]+$/, { message: "Solo lettere, numeri e _" })
+  ),
   isTwoFactorEnabled: z.optional(z.boolean()),
-  role: z.enum([UserRole.ADMIN, UserRole.USER]),
+  role: z.optional(z.enum([UserRole.ADMIN, UserRole.USER])),
   email: z.optional(z.string().email()),
   password: z.optional(z.string().min(6)),
   newPassword: z.optional(z.string().min(6)),
@@ -116,11 +122,6 @@ export const CreateLeagueSchema = z.object({
   name: z.string().min(2, { message: "Il nome deve avere almeno 2 caratteri" }),
   slug: z.string().min(2).regex(/^[a-z0-9-]+$/, { message: "Solo lettere minuscole, numeri e trattini" }),
   description: z.string().optional(),
-});
-
-export const InviteMemberSchema = z.object({
-  email: z.string().email({ message: "Email non valida" }),
-  role: z.enum(["MANAGER", "MEMBER"]),
 });
 
 export const UpdateLeagueSchema = z.object({

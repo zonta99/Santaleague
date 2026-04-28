@@ -5,11 +5,11 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Pencil, Plus, X, Check, Lock } from "lucide-react";
+import { Pencil, Plus, X, Check, Lock, Unlock } from "lucide-react";
 import { SeasonStatus } from "@prisma/client";
 
 import { SeasonSchema } from "@/schemas";
-import { createSeason, updateSeason, closeSeason } from "@/actions/season";
+import { createSeason, updateSeason, closeSeason, reopenSeason } from "@/actions/season";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Season = {
   id: number;
@@ -147,6 +158,14 @@ export function SeasonsManager({ seasons, leagueId }: { seasons: Season[]; leagu
     });
   };
 
+  const handleReopen = (id: number) => {
+    startTransition(async () => {
+      const result = await reopenSeason(id);
+      if (result.success) toast.success(result.success);
+      if (result.error) toast.error(result.error);
+    });
+  };
+
   return (
     <Card className="w-full max-w-2xl">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -216,7 +235,7 @@ export function SeasonsManager({ seasons, leagueId }: { seasons: Season[]; leagu
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      {s.status === "ACTIVE" && (
+                      {s.status === "ACTIVE" ? (
                         <>
                           <Button
                             size="icon"
@@ -226,16 +245,66 @@ export function SeasonsManager({ seasons, leagueId }: { seasons: Season[]; leagu
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            disabled={isPending}
-                            onClick={() => handleClose(s.id)}
-                            title="Chiudi stagione"
-                          >
-                            <Lock className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                disabled={isPending}
+                                title="Chiudi stagione"
+                              >
+                                <Lock className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Chiudere la stagione &quot;{s.name}&quot;?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  La stagione verrà chiusa e i badge stagionali assegnati. Il campione verrà determinato dalla classifica corrente. Potrai riaprirla in seguito.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel disabled={isPending}>Annulla</AlertDialogCancel>
+                                <AlertDialogAction
+                                  disabled={isPending}
+                                  onClick={() => handleClose(s.id)}
+                                >
+                                  Chiudi stagione
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </>
+                      ) : (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              disabled={isPending}
+                              title="Riapri stagione"
+                            >
+                              <Unlock className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Riaprire la stagione &quot;{s.name}&quot;?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tutti i badge stagionali assegnati a questa stagione (campione, capocannoniere, miglior valutazione, più migliorato, ecc.) verranno <strong>eliminati</strong>. Verranno riassegnati in base alla classifica corrente alla prossima chiusura.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel disabled={isPending}>Annulla</AlertDialogCancel>
+                              <AlertDialogAction
+                                disabled={isPending}
+                                onClick={() => handleReopen(s.id)}
+                              >
+                                Riapri stagione
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                   </TableCell>

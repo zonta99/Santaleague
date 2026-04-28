@@ -11,6 +11,9 @@ import { currentUser } from "@/lib/auth";
 import { generateVerificationToken } from "@/lib/tokens";
 import { sendVerificationEmail } from "@/lib/mail";
 
+const NICKNAME_COOLDOWN_DAYS = 30;
+const NICKNAME_COOLDOWN_MS = NICKNAME_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+
 export const settings = async (
   values: z.infer<typeof SettingsSchema>
 ) => {
@@ -72,9 +75,30 @@ export const settings = async (
   // role changes are managed by admin only — strip it from self-service updates
   const { role: _role, ...safeValues } = values;
 
+  let nicknameChangedAt: Date | undefined;
+  if (typeof safeValues.nickname === "string" && safeValues.nickname !== dbUser.nickname) {
+    if (dbUser.nicknameChangedAt) {
+      const elapsed = Date.now() - dbUser.nicknameChangedAt.getTime();
+      if (elapsed < NICKNAME_COOLDOWN_MS) {
+        const daysLeft = Math.ceil((NICKNAME_COOLDOWN_MS - elapsed) / (24 * 60 * 60 * 1000));
+        return { error: `Potrai cambiare soprannome tra ${daysLeft} giorni` };
+      }
+    }
+    const taken = await db.user.findFirst({
+      where: { nickname: safeValues.nickname, NOT: { id: dbUser.id } },
+      select: { id: true },
+    });
+    if (taken) {
+      return { error: "Soprannome già in uso" };
+    }
+    nicknameChangedAt = new Date();
+  } else {
+    delete safeValues.nickname;
+  }
+
   const updatedUser = await db.user.update({
     where: { id: dbUser.id },
-    data: safeValues,
+    data: { ...safeValues, ...(nicknameChangedAt ? { nicknameChangedAt } : {}) },
   });
 
   try {
@@ -84,6 +108,10 @@ export const settings = async (
         email: updatedUser.email,
         isTwoFactorEnabled: updatedUser.isTwoFactorEnabled,
         role: updatedUser.role,
+        nickname: updatedUser.nickname,
+        nicknameChangedAt: updatedUser.nicknameChangedAt
+          ? updatedUser.nicknameChangedAt.toISOString()
+          : null,
       }
     });
   }catch (error) {

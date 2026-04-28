@@ -15,6 +15,8 @@ model User {
   isTwoFactorEnabled      Boolean                  @default(false)
   password                String?
   role                    UserRole                 @default(USER)
+  nickname                String?                  @unique
+  nicknameChangedAt       DateTime?
   accounts                Account[]
   DraftPick               DraftPick[]
   Game                    Game[]
@@ -31,7 +33,6 @@ model User {
   Notification            Notification[]
   NotificationPreferences NotificationPreferences?
   LeagueMember            LeagueMember[]
-  LeagueInviteSent        LeagueInvite[]
   LeagueJoinRequest       LeagueJoinRequest[]
 }
 
@@ -100,7 +101,6 @@ model League {
   Location           Location[]
   LevelFormula       LevelFormula[]
   Badge              Badge[]
-  LeagueInvite       LeagueInvite[]
   LeagueJoinRequest  LeagueJoinRequest[]
 }
 
@@ -116,21 +116,6 @@ model LeagueMember {
   @@unique([league_id, user_id])
   @@index([user_id])
   @@index([league_id])
-}
-
-model LeagueInvite {
-  id         String     @id @default(cuid())
-  token      String     @unique
-  email      String
-  league_id  String
-  role       LeagueRole @default(MEMBER)
-  expires    DateTime
-  invited_by String
-  League     League     @relation(fields: [league_id], references: [id], onDelete: Cascade)
-  InvitedBy  User       @relation(fields: [invited_by], references: [id], onDelete: Cascade)
-
-  @@unique([email, league_id])
-  @@index([token])
 }
 
 model Season {

@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Shield, Users, ChevronRight } from "lucide-react";
+import { Shield, ChevronRight } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createLeague, acceptInvite } from "@/actions/league";
+import { createLeague } from "@/actions/league";
 import type { League, LeagueMember } from "@prisma/client";
 
 type Membership = LeagueMember & { League: League };
@@ -22,23 +21,11 @@ export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
   const [error, setError] = useState<string | null>(null);
 
   const [createForm, setCreateForm] = useState({ name: "", slug: "", description: "" });
-  const [inviteToken, setInviteToken] = useState("");
 
   const handleCreate = () => {
     setError(null);
     startTransition(async () => {
       const result = await createLeague(createForm);
-      if (result.error) { setError(result.error); return; }
-      if (result.leagueId) {
-        window.location.href = `/api/league/activate?id=${result.leagueId}&redirect=/dashboard`;
-      }
-    });
-  };
-
-  const handleJoin = () => {
-    setError(null);
-    startTransition(async () => {
-      const result = await acceptInvite(inviteToken.trim());
       if (result.error) { setError(result.error); return; }
       if (result.leagueId) {
         window.location.href = `/api/league/activate?id=${result.leagueId}&redirect=/dashboard`;
@@ -64,7 +51,7 @@ export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
       <div className="text-center space-y-1">
         <h1 className="text-2xl font-bold">Benvenuto su Santaleague</h1>
         <p className="text-muted-foreground text-sm">
-          {memberships.length > 0 ? "Seleziona una lega o creane una nuova" : "Crea la tua lega o unisciti a una esistente"}
+          {memberships.length > 0 ? "Seleziona una lega o creane una nuova" : "Crea la tua lega o chiedi un link di invito al tuo admin"}
         </p>
       </div>
 
@@ -91,75 +78,44 @@ export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
         </Card>
       )}
 
-      <Tabs defaultValue="create">
-        <TabsList className="w-full">
-          <TabsTrigger value="create" className="flex-1 gap-2">
-            <Shield className="h-4 w-4" /> Crea lega
-          </TabsTrigger>
-          <TabsTrigger value="join" className="flex-1 gap-2">
-            <Users className="h-4 w-4" /> Ho un invito
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="create">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Nuova lega</CardTitle>
-              <CardDescription>Diventerai il proprietario e potrai invitare i tuoi amici.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-1">
-                <Label>Nome lega</Label>
-                <Input
-                  placeholder="Es. Santaleague Roma"
-                  value={createForm.name}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value, slug: autoSlug(e.target.value) }))}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Slug (URL)</Label>
-                <Input
-                  placeholder="es. santaleague-roma"
-                  value={createForm.slug}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, slug: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>Descrizione (opzionale)</Label>
-                <Input
-                  placeholder="Una breve descrizione..."
-                  value={createForm.description}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
-                />
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button className="w-full" onClick={handleCreate} disabled={isPending || !createForm.name}>
-                {isPending ? "Creazione..." : "Crea lega"}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="join">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Inserisci il token di invito</CardTitle>
-              <CardDescription>Trovi il token nel link che hai ricevuto via email.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Input
-                placeholder="Incolla il token qui..."
-                value={inviteToken}
-                onChange={(e) => setInviteToken(e.target.value)}
-              />
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button className="w-full" onClick={handleJoin} disabled={isPending || !inviteToken}>
-                {isPending ? "Verifica..." : "Unisciti alla lega"}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="h-4 w-4" /> Crea una nuova lega
+          </CardTitle>
+          <CardDescription>Diventerai il proprietario e potrai invitare i tuoi amici tramite link condivisibile.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1">
+            <Label>Nome lega</Label>
+            <Input
+              placeholder="Es. Santaleague Roma"
+              value={createForm.name}
+              onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value, slug: autoSlug(e.target.value) }))}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Slug (URL)</Label>
+            <Input
+              placeholder="es. santaleague-roma"
+              value={createForm.slug}
+              onChange={(e) => setCreateForm((f) => ({ ...f, slug: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Descrizione (opzionale)</Label>
+            <Input
+              placeholder="Una breve descrizione..."
+              value={createForm.description}
+              onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+            />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button className="w-full" onClick={handleCreate} disabled={isPending || !createForm.name}>
+            {isPending ? "Creazione..." : "Crea lega"}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

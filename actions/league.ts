@@ -8,11 +8,8 @@ import { LeagueRole } from "@prisma/client";
 import { db } from "@/lib/db";
 import { currentUser } from "@/lib/auth";
 import { canPerformLeagueAction } from "@/lib/league-auth";
-import { getLeagueMember, getLeagueById, getUserLeagues, getLeagueByPublicToken } from "@/data/league";
-import { getLeagueInviteByToken } from "@/data/league-invite";
-import { generateLeagueInviteToken } from "@/lib/tokens";
-import { sendLeagueInviteEmail } from "@/lib/mail";
-import { CreateLeagueSchema, InviteMemberSchema, UpdateLeagueSchema } from "@/schemas";
+import { getLeagueMember, getUserLeagues, getLeagueByPublicToken } from "@/data/league";
+import { CreateLeagueSchema, UpdateLeagueSchema } from "@/schemas";
 
 export const setActiveLeagueAction = async (leagueId: string) => {
   const user = await currentUser();
@@ -77,70 +74,6 @@ export const updateLeague = async (leagueId: string, values: { name?: string; de
   return { success: "Lega aggiornata" };
 };
 
-export const inviteMember = async (leagueId: string, values: { email: string; role: string }) => {
-  const user = await currentUser();
-  if (!user?.id || !user.name) return { error: "Non autenticato" };
-
-  const parsed = InviteMemberSchema.safeParse(values);
-  if (!parsed.success) return { error: "Dati non validi" };
-
-  const allowed = await canPerformLeagueAction(leagueId, "sendInvite");
-  if (!allowed) return { error: "Non autorizzato" };
-
-  const league = await getLeagueById(leagueId);
-  if (!league) return { error: "Lega non trovata" };
-
-  // Check if user already a member
-  const existingUser = await db.user.findUnique({ where: { email: parsed.data.email } });
-  if (existingUser) {
-    const alreadyMember = await getLeagueMember(leagueId, existingUser.id);
-    if (alreadyMember) return { error: "Questo utente è già membro della lega" };
-  }
-
-  const existingInvite = await db.leagueInvite.findFirst({
-    where: { email: parsed.data.email, league_id: leagueId },
-  });
-  if (existingInvite) return { error: "Un invito per questo indirizzo email è già in attesa" };
-
-  try {
-    const invite = await generateLeagueInviteToken(
-      parsed.data.email,
-      leagueId,
-      parsed.data.role as LeagueRole,
-      user.id
-    );
-
-    await sendLeagueInviteEmail(parsed.data.email, league.name, user.name, invite.token);
-  } catch {
-    return { error: "Impossibile inviare l'invito. Riprova." };
-  }
-  return { success: "Invito inviato!" };
-};
-
-export const acceptInvite = async (token: string) => {
-  const user = await currentUser();
-  if (!user?.id || !user.email) return { error: "Devi essere autenticato per accettare l'invito" };
-
-  const invite = await getLeagueInviteByToken(token);
-  if (!invite) return { error: "Invito non valido o scaduto" };
-  if (invite.expires < new Date()) return { error: "Il link di invito è scaduto" };
-  if (invite.email !== user.email) return { error: "Questo invito non è per il tuo account" };
-
-  const alreadyMember = await getLeagueMember(invite.league_id, user.id);
-  if (alreadyMember) {
-    await db.leagueInvite.delete({ where: { id: invite.id } });
-    return { success: "Sei già membro di questa lega", leagueId: invite.league_id };
-  }
-
-  await db.leagueMember.create({
-    data: { league_id: invite.league_id, user_id: user.id, role: invite.role },
-  });
-  await db.leagueInvite.delete({ where: { id: invite.id } });
-
-  revalidatePath("/");
-  return { success: "Benvenuto nella lega!", leagueId: invite.league_id };
-};
-
 export const removeMember = async (leagueId: string, userId: string) => {
   const user = await currentUser();
   if (!user?.id) return { error: "Non autenticato" };
@@ -196,15 +129,6 @@ export const leaveLeague = async (leagueId: string) => {
   return { success: "Hai lasciato la lega" };
 };
 
-export const revokeInvite = async (leagueId: string, inviteId: string) => {
-  const allowed = await canPerformLeagueAction(leagueId, "sendInvite");
-  if (!allowed) return { error: "Non autorizzato" };
-
-  await db.leagueInvite.delete({ where: { id: inviteId } });
-  revalidatePath("/leagues");
-  return { success: "Invito revocato" };
-};
-
 export const getUserLeaguesAction = async () => {
   const user = await currentUser();
   if (!user?.id) return [];
@@ -246,7 +170,6 @@ export const requestJoinLeague = async (token: string) => {
   if (existing) {
     if (existing.status === "PENDING") return { success: "Richiesta già inviata, attendi l'approvazione" };
     if (existing.status === "APPROVED") return { success: "Sei già membro di questa lega", leagueId: league.id };
-    if (existing.status === "REJECTED") return { error: "La tua richiesta è stata rifiutata" };
   }
 
   await db.leagueJoinRequest.upsert({

@@ -31,6 +31,10 @@ import { FormError } from "@/components/form-error";
 import { FormSuccess } from "@/components/form-success";
 import { Badge } from "@/components/ui/badge";
 import { UserRole } from "@prisma/client";
+import { Settings as SettingsIcon, Bell } from "lucide-react";
+
+const NICKNAME_COOLDOWN_DAYS = 30;
+const NICKNAME_COOLDOWN_MS = NICKNAME_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 
 type NotifPrefs = z.infer<typeof NotificationPreferencesSchema>;
 
@@ -74,10 +78,20 @@ const SettingsPage = () => {
       password: undefined,
       newPassword: undefined,
       name: user?.name || undefined,
+      nickname: user?.nickname || undefined,
       email: user?.email || undefined,
 isTwoFactorEnabled: user?.isTwoFactorEnabled || undefined,
     }
   });
+
+  const nicknameChangedAtMs = user?.nicknameChangedAt
+    ? new Date(user.nicknameChangedAt).getTime()
+    : null;
+  const nicknameCooldownLeftMs = nicknameChangedAtMs
+    ? Math.max(0, NICKNAME_COOLDOWN_MS - (Date.now() - nicknameChangedAtMs))
+    : 0;
+  const nicknameLocked = nicknameCooldownLeftMs > 0;
+  const nicknameDaysLeft = Math.ceil(nicknameCooldownLeftMs / (24 * 60 * 60 * 1000));
 
   const onSubmit = (values: z.infer<typeof SettingsSchema>) => {
     startTransition(() => {
@@ -109,8 +123,9 @@ isTwoFactorEnabled: user?.isTwoFactorEnabled || undefined,
     <div className="w-full max-w-[600px] space-y-6">
     <Card>
       <CardHeader>
-        <p className="text-2xl font-semibold text-center">
-          ⚙️ Settings
+        <p className="text-2xl font-semibold text-center flex items-center justify-center gap-2">
+          <SettingsIcon className="h-5 w-5" />
+          Settings
         </p>
       </CardHeader>
       <CardContent>
@@ -133,6 +148,29 @@ isTwoFactorEnabled: user?.isTwoFactorEnabled || undefined,
                         disabled={isPending}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="nickname"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Soprannome</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        value={field.value ?? ""}
+                        placeholder="es. bomber_99"
+                        disabled={isPending || nicknameLocked}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {nicknameLocked
+                        ? `Potrai cambiarlo nuovamente tra ${nicknameDaysLeft} giorni.`
+                        : "3-20 caratteri: lettere, numeri e _. Modificabile ogni 30 giorni."}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -241,7 +279,10 @@ isTwoFactorEnabled: user?.isTwoFactorEnabled || undefined,
     </Card>
       <Card>
         <CardHeader>
-          <p className="text-2xl font-semibold text-center">🔔 Notifiche</p>
+          <p className="text-2xl font-semibold text-center flex items-center justify-center gap-2">
+            <Bell className="h-5 w-5" />
+            Notifiche
+          </p>
         </CardHeader>
         <CardContent className="space-y-3">
           {notifItems.map(({ key, label, description }) => (
