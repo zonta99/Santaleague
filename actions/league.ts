@@ -3,7 +3,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { LeagueRole } from "@prisma/client";
+import { LeagueRole, UserRole } from "@prisma/client";
 
 import { db } from "@/lib/db";
 import { currentUser } from "@/lib/auth";
@@ -37,6 +37,11 @@ export const clearActiveLeagueAction = async () => {
 export const createLeague = async (values: { name: string; slug: string; description?: string }) => {
   const user = await currentUser();
   if (!user?.id) return { error: "Non autenticato" };
+
+  const dbUser = await db.user.findUnique({ where: { id: user.id }, select: { canCreateLeague: true, role: true } });
+  if (!dbUser?.canCreateLeague && dbUser?.role !== UserRole.ADMIN) {
+    return { error: "Non sei autorizzato a creare una lega." };
+  }
 
   const parsed = CreateLeagueSchema.safeParse(values);
   if (!parsed.success) return { error: "Dati non validi" };

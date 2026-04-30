@@ -14,9 +14,10 @@ type Membership = LeagueMember & { League: League };
 
 interface LeagueOnboardingProps {
   memberships?: Membership[];
+  canCreateLeague?: boolean;
 }
 
-export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
+export function LeagueOnboarding({ memberships = [], canCreateLeague = false }: LeagueOnboardingProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +52,9 @@ export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
       <div className="text-center space-y-1">
         <h1 className="text-2xl font-bold">Benvenuto su Santaleague</h1>
         <p className="text-muted-foreground text-sm">
-          {memberships.length > 0 ? "Seleziona una lega o creane una nuova" : "Crea la tua lega o chiedi un link di invito al tuo admin"}
+          {memberships.length > 0
+            ? canCreateLeague ? "Seleziona una lega o creane una nuova" : "Seleziona una lega"
+            : canCreateLeague ? "Crea la tua prima lega" : "Chiedi un link di invito al tuo admin"}
         </p>
       </div>
 
@@ -78,7 +81,7 @@ export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
         </Card>
       )}
 
-      <Card>
+      {canCreateLeague && <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Shield className="h-4 w-4" /> Crea una nuova lega
@@ -115,7 +118,7 @@ export function LeagueOnboarding({ memberships = [] }: LeagueOnboardingProps) {
             {isPending ? "Creazione..." : "Crea lega"}
           </Button>
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }

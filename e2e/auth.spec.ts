@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+test.use({ storageState: { cookies: [], origins: [] } });
+
 const TEST_EMAIL = "playwright@test.local";
 const TEST_PASSWORD = "TestPassword123!";
 

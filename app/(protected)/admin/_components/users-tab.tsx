@@ -7,7 +7,7 @@ export async function UsersTab() {
     currentUser(),
     db.user.findMany({
       orderBy: { name: "asc" },
-      select: { id: true, name: true, email: true, role: true, emailVerified: true },
+      select: { id: true, name: true, email: true, role: true, canCreateLeague: true, emailVerified: true },
     }),
   ]);
 

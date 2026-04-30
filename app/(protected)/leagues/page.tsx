@@ -9,10 +9,11 @@ export default async function LeaguesPage() {
   if (!user?.id) redirect("/auth/login");
 
   const memberships = await getUserLeagues(user.id);
+  const canCreate = user.canCreateLeague || user.role === "ADMIN";
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] w-full max-w-md mx-auto">
-      <LeagueOnboarding memberships={memberships} />
+      <LeagueOnboarding memberships={memberships} canCreateLeague={canCreate} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { type DefaultSession } from "next-auth";
 export type ExtendedUser = DefaultSession["user"] & {
   role: UserRole;
   isTwoFactorEnabled: boolean;
+  canCreateLeague: boolean;
   isOAuth: boolean;
   nickname?: string | null;
   nicknameChangedAt?: string | null;

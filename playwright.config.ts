@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 1,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:3001",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
@@ -19,14 +19,17 @@ export default defineConfig({
     },
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/user.json",
+      },
       dependencies: ["setup"],
     },
   ],
   webServer: {
-    command: "bun dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: true,
+    command: "dotenv -e .env.test -- bun dev --port 3001",
+    url: "http://localhost:3001",
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
 });

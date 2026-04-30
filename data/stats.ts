@@ -382,19 +382,19 @@ export const getAdminDashboardStats = async (leagueId: string, seasonId?: number
 export const getUserStats = async (userId: string, leagueId: string) => {
   const [matchesPlayed, goals, nextMatch] = await Promise.all([
     db.matchParticipant.count({
-      where: { user_id: userId, Match: { status: "COMPLETED", Season: { league_id: leagueId } } },
+      where: { user_id: userId, Match: { status: "COMPLETED", league_id: leagueId } },
     }),
     db.gameDetail.count({
       where: {
         player_id: userId,
         event_type: GameEventType.Goal,
-        Game: { Match: { Season: { league_id: leagueId } } },
+        Game: { Match: { league_id: leagueId } },
       },
     }),
     db.match.findFirst({
       where: {
         status: "SCHEDULED",
-        Season: { league_id: leagueId },
+        league_id: leagueId,
         MatchParticipant: { some: { user_id: userId } },
       },
       orderBy: { date: "asc" },

@@ -18,3 +18,13 @@ export const updateUserRole = async (userId: string, newRole: UserRole) => {
   revalidatePath("/admin/users");
   return { success: "Ruolo aggiornato" };
 };
+
+export const toggleCanCreateLeague = async (userId: string, value: boolean) => {
+  const role = await currentRole();
+  if (!hasPermission(role, "manageUsers")) return { error: "Non autorizzato" };
+
+  await db.user.update({ where: { id: userId }, data: { canCreateLeague: value } });
+
+  revalidatePath("/admin/users");
+  return { success: value ? "Permesso concesso" : "Permesso revocato" };
+};

@@ -55,6 +55,7 @@ const nextAuth = NextAuth({
 
       if (session.user) {
         session.user.isTwoFactorEnabled = token.isTwoFactorEnabled as boolean;
+        session.user.canCreateLeague = token.canCreateLeague as boolean;
       }
 
       if (session.user) {
@@ -89,6 +90,7 @@ const nextAuth = NextAuth({
       token.email = existingUser.email;
       token.role = existingUser.role;
       token.isTwoFactorEnabled = existingUser.isTwoFactorEnabled;
+      token.canCreateLeague = existingUser.canCreateLeague;
       token.nickname = existingUser.nickname;
       token.nicknameChangedAt = existingUser.nicknameChangedAt
         ? existingUser.nicknameChangedAt.toISOString()

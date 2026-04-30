@@ -11,7 +11,7 @@ const AdminUsersPage = async () => {
   const me = await currentUser();
   const users = await db.user.findMany({
     orderBy: { name: "asc" },
-    select: { id: true, name: true, email: true, role: true, emailVerified: true },
+    select: { id: true, name: true, email: true, role: true, canCreateLeague: true, emailVerified: true },
   });
 
   return (
