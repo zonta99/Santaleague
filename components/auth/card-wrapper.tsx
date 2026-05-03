@@ -17,6 +17,7 @@ interface CardWrapperProps {
   backButtonLabel: string;
   backButtonHref: string;
   showSocial?: boolean;
+  socialMode?: "login" | "register";
 }
 
 export const CardWrapper = ({
@@ -25,6 +26,7 @@ export const CardWrapper = ({
   backButtonLabel,
   backButtonHref,
   showSocial,
+  socialMode,
 }: CardWrapperProps) => {
   return (
     <Card className="w-[420px] shadow-2xl shadow-black/60 border-border">
@@ -40,7 +42,7 @@ export const CardWrapper = ({
               <span className="text-muted-foreground text-xs tracking-widest uppercase">or</span>
               <Separator className="flex-1" />
             </div>
-            <Social />
+            <Social mode={socialMode} />
           </>
         )}
       </CardContent>

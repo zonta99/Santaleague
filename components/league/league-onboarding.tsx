@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Shield, ChevronRight } from "lucide-react";
+import { Shield, ChevronRight, LogOut } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { createLeague } from "@/actions/league";
+import { logout } from "@/actions/logout";
 import type { League, LeagueMember } from "@prisma/client";
 
 type Membership = LeagueMember & { League: League };
@@ -49,7 +50,7 @@ export function LeagueOnboarding({ memberships = [], canCreateLeague = false }: 
 
   return (
     <div className="w-full space-y-4">
-      <div className="text-center space-y-1">
+      <div className="text-center space-y-1 relative">
         <h1 className="text-2xl font-bold">Benvenuto su Santaleague</h1>
         <p className="text-muted-foreground text-sm">
           {memberships.length > 0
@@ -80,6 +81,11 @@ export function LeagueOnboarding({ memberships = [], canCreateLeague = false }: 
           </CardContent>
         </Card>
       )}
+
+      <Button variant="outline" className="w-full gap-2 text-muted-foreground" onClick={() => logout()}>
+        <LogOut className="h-4 w-4" />
+        Esci dall&apos;account
+      </Button>
 
       {canCreateLeague && <Card>
         <CardHeader>

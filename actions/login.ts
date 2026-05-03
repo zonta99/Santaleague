@@ -35,8 +35,12 @@ export const login = async (
 
   const existingUser = await getUserByEmail(email);
 
-  if (!existingUser || !existingUser.email || !existingUser.password) {
-    return { error: "Email does not exist!" }
+  if (!existingUser || !existingUser.email) {
+    return { error: "No account found with this email." }
+  }
+
+  if (!existingUser.password) {
+    return { error: "This email is linked to a social account (Google or GitHub). Please sign in with that provider." }
   }
 
   if (!existingUser.emailVerified) {

@@ -8,7 +8,11 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 
-export const Social = () => {
+interface SocialProps {
+  mode?: "login" | "register";
+}
+
+export const Social = ({ mode = "login" }: SocialProps) => {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
 
@@ -18,25 +22,27 @@ export const Social = () => {
     });
   };
 
+  const verb = mode === "register" ? "Sign up" : "Continue";
+
   return (
-    <div className="flex items-center w-full gap-x-3">
+    <div className="flex flex-col w-full gap-2">
       <Button
         size="lg"
         variant="outline"
-        className="flex-1 gap-2"
+        className="w-full gap-2"
         onClick={() => onClick("google")}
       >
         <FcGoogle className="h-4 w-4" />
-        Google
+        {verb} with Google
       </Button>
       <Button
         size="lg"
         variant="outline"
-        className="flex-1 gap-2"
+        className="w-full gap-2"
         onClick={() => onClick("github")}
       >
         <FaGithub className="h-4 w-4" />
-        GitHub
+        {verb} with GitHub
       </Button>
     </div>
   );

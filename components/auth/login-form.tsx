@@ -31,7 +31,7 @@ export const LoginForm = () => {
     : "/auth/register";
   const urlError =
     searchParams.get("error") === "OAuthAccountNotLinked"
-      ? "Email already in use with different provider!"
+      ? "This email is already linked to a different sign-in method. Try Google or GitHub instead."
       : "";
 
   const [showTwoFactor, setShowTwoFactor] = useState(false);
@@ -65,6 +65,7 @@ export const LoginForm = () => {
       backButtonLabel="Don't have an account? Register"
       backButtonHref={registerHref}
       showSocial
+      socialMode="login"
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
