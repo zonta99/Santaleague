@@ -1,3 +1,9 @@
+"use client";
+
+import { useTransition } from "react";
+import { toast } from "sonner";
+import { Play, CheckCircle } from "lucide-react";
+import { startGame, completeGame } from "@/actions/game";
 import { GameDetailForm } from "./game-detail-form";
 
 type GameDetailItem = {
@@ -15,6 +21,9 @@ type Team = { id: number; name: string; logo?: string | null };
 type GameItem = {
   id: number;
   game_number: number;
+  status: string;
+  round?: string | null;
+  bracket_slot?: number | null;
   team1_id: number | null;
   team2_id: number | null;
   winner_team_id: number | null;
@@ -39,13 +48,28 @@ interface Props {
   isAdmin: boolean;
 }
 
+const GAME_STATUS_LABEL: Record<string, string> = {
+  SCHEDULED: "In programma",
+  ONGOING: "In corso",
+  COMPLETED: "Completato",
+  CANCELED: "Annullato",
+};
+
+const ROUND_LABEL: Record<string, string> = {
+  FINAL: "Finale",
+  SF: "Semifinale",
+  QF: "Quarto di finale",
+  R16: "Ottavo di finale",
+  R32: "Sedicesimo di finale",
+};
+
 function ScoreBoard({ game, isCompleted }: { game: GameItem; isCompleted: boolean }) {
   if (!game.Team1 || !game.Team2) return null;
   const t1 = game.GameDetail.filter((d) => d.event_type === "Goal" && d.team_id === game.team1_id).length;
   const t2 = game.GameDetail.filter((d) => d.event_type === "Goal" && d.team_id === game.team2_id).length;
 
-  const winner = isCompleted ? game.winner_team_id : null;
-  const isDraw = isCompleted && winner === null;
+  const winner = (isCompleted || game.status === "COMPLETED") ? game.winner_team_id : null;
+  const isDraw = winner === null && (isCompleted || game.status === "COMPLETED");
 
   return (
     <div className="flex items-center justify-between gap-4 py-4 px-2">
@@ -75,6 +99,52 @@ function ScoreBoard({ game, isCompleted }: { game: GameItem; isCompleted: boolea
   );
 }
 
+function GameControls({ game, matchId }: { game: GameItem; matchId: number }) {
+  const [isPending, startTransition] = useTransition();
+
+  if (game.status === "COMPLETED" || game.status === "CANCELED") return null;
+  if (!game.Team1 || !game.Team2) return null;
+
+  const handleStart = () => {
+    startTransition(async () => {
+      const res = await startGame(game.id, matchId);
+      if (res.success) toast.success(res.success);
+      else toast.error(res.error);
+    });
+  };
+
+  const handleComplete = () => {
+    startTransition(async () => {
+      const res = await completeGame(game.id, matchId);
+      if (res.success) toast.success(res.success);
+      else toast.error(res.error);
+    });
+  };
+
+  return (
+    <div className="flex gap-2 pt-2">
+      {game.status === "SCHEDULED" && (
+        <button
+          onClick={handleStart}
+          disabled={isPending}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+        >
+          <Play className="w-3 h-3" /> Avvia game
+        </button>
+      )}
+      {game.status === "ONGOING" && (
+        <button
+          onClick={handleComplete}
+          disabled={isPending}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors disabled:opacity-50"
+        >
+          <CheckCircle className="w-3 h-3" /> Termina game
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function TabPartite({ games, draftPicks, matchId, isOngoing, isCompleted, isAdmin }: Props) {
   if (games.length === 0) {
     return <p className="text-sm text-muted-foreground pt-2">Nessuna partita ancora assegnata.</p>;
@@ -84,13 +154,22 @@ export function TabPartite({ games, draftPicks, matchId, isOngoing, isCompleted,
     <div className="space-y-4 pt-2">
       {games.map((game) => (
         <section key={game.id} className="rounded-2xl border border-white/[0.08] overflow-hidden">
-          {games.length > 1 && (
-            <div className="px-5 pt-4 pb-0">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
-                Partita {game.game_number}
-              </p>
+          <div className="px-5 pt-4 pb-0 flex items-center justify-between">
+            <div>
+              {games.length > 1 && (
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">
+                  {game.round ? (ROUND_LABEL[game.round] ?? game.round) : `Partita ${game.game_number}`}
+                </p>
+              )}
             </div>
-          )}
+            <span className={`text-[10px] font-semibold uppercase tracking-wide ${
+              game.status === "ONGOING" ? "text-emerald-400" :
+              game.status === "COMPLETED" ? "text-zinc-400" :
+              game.status === "CANCELED" ? "text-red-400" : "text-amber-400"
+            }`}>
+              {GAME_STATUS_LABEL[game.status] ?? game.status}
+            </span>
+          </div>
 
           {game.Team1 && game.Team2 ? (
             <div className="px-5">
@@ -113,13 +192,18 @@ export function TabPartite({ games, draftPicks, matchId, isOngoing, isCompleted,
               <p className="text-xs text-muted-foreground pt-3">Nessun evento registrato.</p>
             )}
 
-            {isAdmin ? (
-              <GameDetailForm
-                game={game}
-                matchId={matchId}
-                draftPicks={draftPicks}
-                isOngoing={isOngoing}
-              />
+            {isAdmin && isOngoing ? (
+              <div className="space-y-2 pt-2">
+                <GameControls game={game} matchId={matchId} />
+                {game.status === "ONGOING" && (
+                  <GameDetailForm
+                    game={game}
+                    matchId={matchId}
+                    draftPicks={draftPicks}
+                    isOngoing={true}
+                  />
+                )}
+              </div>
             ) : game.GameDetail.length > 0 ? (
               <div className="space-y-0.5 pt-2">
                 {game.GameDetail.map((d) => (

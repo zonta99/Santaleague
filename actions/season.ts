@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { db } from "@/lib/db";
 import { canPerformLeagueAction } from "@/lib/league-auth";
+import { currentRole } from "@/lib/auth";
+import { UserRole } from "@prisma/client";
 import { SeasonSchema } from "@/schemas";
 import { getLeaderboard } from "@/data/stats";
 import { awardSeasonBadges } from "@/actions/badges";
@@ -93,12 +95,12 @@ export const closeSeason = async (id: number) => {
 };
 
 export const reopenSeason = async (id: number) => {
+  const role = await currentRole();
+  if (role !== UserRole.ADMIN) return { error: "Solo un amministratore globale può riaprire una stagione." };
+
   const season = await db.season.findUnique({ where: { id } });
   if (!season) return { error: "Stagione non trovata" };
   if (season.status === "ACTIVE") return { error: "Stagione già attiva" };
-
-  const allowed = await canPerformLeagueAction(season.league_id, "manageSeasons");
-  if (!allowed) return { error: "Non autorizzato" };
 
   const activeSeason = await db.season.findFirst({
     where: { league_id: season.league_id, status: "ACTIVE" },

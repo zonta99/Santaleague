@@ -55,7 +55,7 @@ const AdminPage = async ({ searchParams }: AdminPageProps) => {
         <AdminTabs isGlobalAdmin={isGlobalAdmin} isLeagueAdmin={isLeagueAdmin} title={isGlobalAdmin ? "Admin" : "Gestione"}>
           {activeTab === "overview" && <OverviewTab seasonId={activeSeason?.id} leagueId={leagueId!} />}
           {activeTab === "matches" && <MatchesTab leagueId={leagueId!} />}
-          {activeTab === "seasons" && <SeasonsTab leagueId={leagueId!} />}
+          {activeTab === "seasons" && <SeasonsTab leagueId={leagueId!} isGlobalAdmin={isGlobalAdmin} />}
           {activeTab === "members" && isLeagueAdmin && !isGlobalAdmin && (
             <MembersTab
               leagueId={leagueId!}

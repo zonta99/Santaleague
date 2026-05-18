@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Shield, ChevronRight, LogOut } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,12 +41,6 @@ export function LeagueOnboarding({ memberships = [], canCreateLeague = false }: 
   const handleSelect = (leagueId: string) => {
     window.location.href = `/api/league/activate?id=${leagueId}&redirect=/dashboard`;
   };
-
-  useEffect(() => {
-    if (memberships.length === 1) {
-      window.location.href = `/api/league/activate?id=${memberships[0].league_id}&redirect=/dashboard`;
-    }
-  }, [memberships]);
 
   return (
     <div className="w-full space-y-4">

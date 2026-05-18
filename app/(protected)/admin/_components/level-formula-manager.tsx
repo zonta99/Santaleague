@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -18,6 +18,12 @@ export function LevelFormulaManager({ initial, leagueId }: Props) {
   const [winW, setWinW] = useState(Math.round(initial.win_weight * 100));
   const [goalW, setGoalW] = useState(Math.round(initial.goal_weight * 100));
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setFieldW(Math.round(initial.field_weight * 100));
+    setWinW(Math.round(initial.win_weight * 100));
+    setGoalW(Math.round(initial.goal_weight * 100));
+  }, [leagueId]);
 
   const total = fieldW + winW + goalW;
   const isValid = total === 100;

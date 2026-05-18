@@ -61,15 +61,20 @@ export const LoginSchema = z.object({
 export const LocationSchema = z.object({
   name: z.string().min(1, { message: "Nome obbligatorio" }),
   description: z.optional(z.string()),
+  num_fields: z.coerce.number().int().min(1).max(20).default(1),
 });
 
 export const CreateMatchSchema = z.object({
   date: z.string().min(1, { message: "Data obbligatoria" }),
   location_id: z.coerce.number().min(1, { message: "Campo obbligatorio" }),
-  match_type: z.enum(["normal", "torneo"]),
-  num_games: z.coerce.number().min(1).max(10),
   num_teams: z.coerce.number().int().min(2).max(6),
   players_per_team: z.coerce.number().int().min(1).max(15),
+  // Only used when num_teams === 2 (NORMALE format)
+  num_games: z.coerce.number().min(1).max(10).default(1),
+  // Only used when num_teams >= 4
+  bracket_format: z.enum(["GIRONE", "BRACKET_ELIMINATION", "BRACKET_GROUPS"]).optional(),
+  // Seeding for bracket: ordered list of team slot names
+  bracket_seed: z.array(z.string()).optional(),
 });
 
 export const SeasonSchema = z.object({

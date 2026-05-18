@@ -129,7 +129,7 @@ function SeasonForm({
   );
 }
 
-export function SeasonsManager({ seasons, leagueId }: { seasons: Season[]; leagueId: string }) {
+export function SeasonsManager({ seasons, leagueId, isGlobalAdmin }: { seasons: Season[]; leagueId: string; isGlobalAdmin: boolean }) {
   const [isPending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -275,7 +275,7 @@ export function SeasonsManager({ seasons, leagueId }: { seasons: Season[]; leagu
                             </AlertDialogContent>
                           </AlertDialog>
                         </>
-                      ) : (
+                      ) : isGlobalAdmin ? (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
@@ -305,7 +305,7 @@ export function SeasonsManager({ seasons, leagueId }: { seasons: Season[]; leagu
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                      )}
+                      ) : null}
                     </div>
                   </TableCell>
                 </TableRow>

@@ -15,7 +15,9 @@ export const createLocation = async (values: z.infer<typeof LocationSchema>, lea
   if (!parsed.success) return { error: "Dati non validi" };
 
   try {
-    await db.location.create({ data: { ...parsed.data, league_id: leagueId } });
+    await db.location.create({
+      data: { name: parsed.data.name, description: parsed.data.description, num_fields: parsed.data.num_fields ?? 1, league_id: leagueId },
+    });
   } catch {
     return { error: "Nome già esistente" };
   }
@@ -32,7 +34,10 @@ export const updateLocation = async (id: number, values: z.infer<typeof Location
   if (!parsed.success) return { error: "Dati non validi" };
 
   try {
-    await db.location.update({ where: { id }, data: parsed.data });
+    await db.location.update({
+      where: { id },
+      data: { name: parsed.data.name, description: parsed.data.description, num_fields: parsed.data.num_fields ?? 1 },
+    });
   } catch {
     return { error: "Nome già esistente" };
   }

@@ -42,7 +42,6 @@ export function CreateMatchForm({ locations, leagueId }: Props) {
     defaultValues: {
       date: "",
       location_id: 0,
-      match_type: "normal",
       num_games: 1,
       num_teams: 2,
       players_per_team: 5,
@@ -108,27 +107,6 @@ export function CreateMatchForm({ locations, leagueId }: Props) {
                           {loc.name}
                         </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="match_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isPending}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="normal">Normale</SelectItem>
-                      <SelectItem value="torneo">Torneo</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

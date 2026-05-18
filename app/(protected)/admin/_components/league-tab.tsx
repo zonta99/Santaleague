@@ -23,9 +23,9 @@ export async function LeagueTab({ leagueId, isOwner }: Props) {
   return (
     <div className="space-y-6">
       {isOwner && league && (
-        <UpdateLeagueForm leagueId={leagueId} league={league} />
+        <UpdateLeagueForm key={leagueId} leagueId={leagueId} league={league} />
       )}
-      <LevelFormulaManager initial={formulaData} leagueId={leagueId} />
+      <LevelFormulaManager key={leagueId} initial={formulaData} leagueId={leagueId} />
     </div>
   );
 }

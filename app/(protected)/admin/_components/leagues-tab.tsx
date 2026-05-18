@@ -23,6 +23,7 @@ export function LeaguesTabShell({ leagues, selectedLeagueId, children }: Props) 
     const params = new URLSearchParams(searchParams.toString());
     params.set("leagueId", id);
     router.push(`?${params.toString()}`);
+    router.refresh();
   }
 
   return (

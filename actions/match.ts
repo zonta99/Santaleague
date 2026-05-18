@@ -11,6 +11,8 @@ import { CreateMatchSchema } from "@/schemas";
 import { checkCareerBadgesForPlayer } from "@/actions/badges";
 import { createNotificationsForUsers } from "@/actions/notifications";
 import { getActiveSeason } from "@/data/season";
+import { deriveFormat, roundRobinPairs, buildEliminationBracket } from "@/lib/match-format";
+import type { MatchFormat } from "@/lib/match-format";
 
 export const createMatch = async (values: z.infer<typeof CreateMatchSchema>, leagueId: string) => {
   const allowed = await canPerformLeagueAction(leagueId, "createMatch");
@@ -19,27 +21,81 @@ export const createMatch = async (values: z.infer<typeof CreateMatchSchema>, lea
   const parsed = CreateMatchSchema.safeParse(values);
   if (!parsed.success) return { error: "Dati non validi" };
 
-  const { date, location_id, match_type, num_games, num_teams, players_per_team } = parsed.data;
-  const activeSeason = await getActiveSeason(leagueId);
+  const { date, location_id, num_games, num_teams, players_per_team, bracket_format, bracket_seed } = parsed.data;
 
-  const match = await db.match.create({
-    data: {
-      date: new Date(date),
-      match_type,
-      location_id,
-      status: "SCHEDULED",
-      league_id: leagueId,
-      season_id: activeSeason?.id ?? null,
-      num_teams,
-      players_per_team,
-      Game: {
-        create: Array.from({ length: num_games }, (_, i) => ({
-          game_number: i + 1,
-          status: "SCHEDULED",
-        })),
+  const [activeSeason, location] = await Promise.all([
+    getActiveSeason(leagueId),
+    db.location.findFirst({ where: { id: location_id }, select: { id: true } }),
+  ]);
+
+  if (!activeSeason) return { error: "Nessuna stagione attiva per questa lega." };
+  if (!location) return { error: "Campo non valido." };
+
+  const format: MatchFormat = deriveFormat(num_teams, bracket_format)
+
+  // Build game list based on format
+  type GameCreate = { game_number: number; status: "SCHEDULED"; round?: string; bracket_slot?: number; fed_from_game1?: number; fed_from_game2?: number }
+  let gamesToCreate: GameCreate[]
+
+  if (format === "NORMALE") {
+    gamesToCreate = Array.from({ length: num_games }, (_, i) => ({ game_number: i + 1, status: "SCHEDULED" as const }))
+  } else if (format === "GIRONE") {
+    const pairs = roundRobinPairs(num_teams)
+    gamesToCreate = pairs.map((_, i) => ({ game_number: i + 1, status: "SCHEDULED" as const }))
+  } else {
+    // BRACKET_ELIMINATION or BRACKET_GROUPS
+    const slots = buildEliminationBracket(num_teams)
+    gamesToCreate = slots.map((s, i) => ({
+      game_number: i + 1,
+      status: "SCHEDULED" as const,
+      round: s.round,
+      bracket_slot: s.bracket_slot,
+    }))
+  }
+
+  const match = await db.$transaction(async (tx) => {
+    const created = await tx.match.create({
+      data: {
+        date: new Date(date),
+        format,
+        location_id,
+        status: "SCHEDULED",
+        league_id: leagueId,
+        season_id: activeSeason.id,
+        num_teams,
+        players_per_team,
+        Game: { create: gamesToCreate },
       },
-    },
-  });
+      include: { Game: { orderBy: { game_number: "asc" } } },
+    })
+
+    // For bracket: wire up fed_from_game references now that we have game IDs
+    if (format === "BRACKET_ELIMINATION" || format === "BRACKET_GROUPS") {
+      const slots = buildEliminationBracket(num_teams)
+      for (const slot of slots) {
+        if (slot.fed_from_slot_a === null && slot.fed_from_slot_b === null) continue
+        const thisGame = created.Game.find((g) => g.bracket_slot === slot.bracket_slot)
+        if (!thisGame) continue
+        const feeder1 = slot.fed_from_slot_a !== null
+          ? created.Game.find((g) => g.bracket_slot === slot.fed_from_slot_a) : null
+        const feeder2 = slot.fed_from_slot_b !== null
+          ? created.Game.find((g) => g.bracket_slot === slot.fed_from_slot_b) : null
+        await tx.game.update({
+          where: { id: thisGame.id },
+          data: { fed_from_game1: feeder1?.id ?? null, fed_from_game2: feeder2?.id ?? null },
+        })
+      }
+
+      // Save bracket seed if provided
+      if (bracket_seed && bracket_seed.length > 0) {
+        await tx.matchBracketSeed.createMany({
+          data: bracket_seed.map((name, i) => ({ match_id: created.id, position: i + 1, team_name: name })),
+        })
+      }
+    }
+
+    return created
+  })
 
   const leagueMembers = await db.leagueMember.findMany({
     where: { league_id: leagueId },
@@ -124,14 +180,13 @@ export const updateMatchStatus = async (matchId: number, status: "SCHEDULED" | "
 
   await db.match.update({ where: { id: matchId }, data: { status } });
   if (status === "COMPLETED") {
+    // Complete all games not yet completed
     await db.game.updateMany({ where: { match_id: matchId, status: { not: "COMPLETED" } }, data: { status: "COMPLETED" } });
   } else if (status === "CANCELED") {
-    // Close ratings and only cancel games not already completed
     await db.match.update({ where: { id: matchId }, data: { rating_open: false } });
     await db.game.updateMany({ where: { match_id: matchId, status: { not: "COMPLETED" } }, data: { status: "CANCELED" } });
-  } else {
-    await db.game.updateMany({ where: { match_id: matchId }, data: { status } });
   }
+  // When ONGOING: games stay SCHEDULED; admin starts each game individually via startGame action
 
   if (status === "ONGOING") {
     const participants = await db.matchParticipant.findMany({

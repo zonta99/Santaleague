@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,11 @@ export function UpdateLeagueForm({ leagueId, league }: Props) {
   const [name, setName] = useState(league.name);
   const [description, setDescription] = useState(league.description ?? "");
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setName(league.name);
+    setDescription(league.description ?? "");
+  }, [leagueId]);
 
   const handleSave = () => {
     startTransition(async () => {

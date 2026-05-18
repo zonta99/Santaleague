@@ -8,8 +8,8 @@ export const getAllMatches = async (leagueId?: string) => {
       id: true,
       date: true,
       status: true,
-      match_type: true,
-      Location: { select: { name: true } },
+      format: true,
+      Location: { select: { name: true, num_fields: true } },
       _count: { select: { Game: true, MatchParticipant: true } },
     },
   });
@@ -67,7 +67,7 @@ export const getMatchById = async (id: number): Promise<any> => {
             id: true,
             date: true,
             status: true,
-            match_type: true,
+            format: true,
             mvp_id: true,
             User: { select: { id: true, name: true, image: true } },
             rating_opened_at: true,
@@ -76,7 +76,7 @@ export const getMatchById = async (id: number): Promise<any> => {
             num_teams: true,
             players_per_team: true,
             Season: { select: { league_id: true } },
-            Location: { select: { name: true } },
+            Location: { select: { name: true, num_fields: true } },
             DraftPick: {
                 select: {
                     user_id: true,
@@ -106,6 +106,10 @@ export const getMatchById = async (id: number): Promise<any> => {
                         },
                     },
                     status: true,
+                    round: true,
+                    bracket_slot: true,
+                    fed_from_game1: true,
+                    fed_from_game2: true,
                     winner_team_id: true,
                     GameDetail: {
                         orderBy: { minute: "asc" },

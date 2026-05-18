@@ -117,7 +117,7 @@ export default async function MatchDetailPage({ params }: Props) {
             {new Date(match.date).toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </h1>
           <div className="flex items-center gap-3 mt-1">
-            <span className="text-xs text-muted-foreground capitalize">{match.match_type}</span>
+            <span className="text-xs text-muted-foreground capitalize">{match.format?.toLowerCase().replace("_", " ") ?? ""}</span>
             {match.Location?.name && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <MapPin className="w-3 h-3" />

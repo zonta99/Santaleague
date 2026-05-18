@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-type Location = { id: number; name: string; description: string | null; _count?: { Match: number } };
+type Location = { id: number; name: string; description: string | null; num_fields: number; _count?: { Match: number } };
 
 interface Props {
   locations: Location[];
@@ -67,6 +67,19 @@ function LocationForm({
               <FormLabel>Descrizione</FormLabel>
               <FormControl>
                 <Input placeholder="Opzionale" disabled={isPending} {...field} value={field.value ?? ""} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="num_fields"
+          render={({ field }) => (
+            <FormItem className="w-24">
+              <FormLabel>Campi</FormLabel>
+              <FormControl>
+                <Input type="number" min={1} max={20} disabled={isPending} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -128,7 +141,7 @@ export function LocationsManager({ locations, leagueId }: Props) {
       {showCreate && (
         <div className="rounded-lg border border-border p-4 bg-card">
           <LocationForm
-            defaultValues={{ name: "", description: "" }}
+            defaultValues={{ name: "", description: "", num_fields: 1 }}
             onSubmit={handleCreate}
             onCancel={() => setShowCreate(false)}
             isPending={isPending}
@@ -146,7 +159,7 @@ export function LocationsManager({ locations, leagueId }: Props) {
           editingId === loc.id ? (
             <div key={loc.id} className="p-4 bg-card">
               <LocationForm
-                defaultValues={{ name: loc.name, description: loc.description ?? "" }}
+                defaultValues={{ name: loc.name, description: loc.description ?? "", num_fields: loc.num_fields }}
                 onSubmit={(values) => handleUpdate(loc.id, values)}
                 onCancel={() => setEditingId(null)}
                 isPending={isPending}
@@ -156,9 +169,10 @@ export function LocationsManager({ locations, leagueId }: Props) {
             <div key={loc.id} className="flex items-center justify-between px-4 py-3 bg-card hover:bg-muted/30 transition-colors">
               <div>
                 <p className="text-sm font-medium">{loc.name}</p>
-                {loc.description && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{loc.description}</p>
-                )}
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {loc.num_fields} {loc.num_fields === 1 ? "campo" : "campi"}
+                  {loc.description ? ` · ${loc.description}` : ""}
+                </p>
               </div>
               <div className="flex items-center gap-1">
                 <Button

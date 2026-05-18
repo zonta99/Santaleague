@@ -76,7 +76,7 @@ async function seedPastMatch(
     data: {
       date,
       status: "COMPLETED",
-      match_type: "normal",
+      format: "NORMALE",
       location_id: locationId,
       season_id: seasonId,
       draft_locked: true,
@@ -205,7 +205,7 @@ async function seedOngoingMatch(users: { id: string }[], locationId: number, sea
     data: {
       date: new Date(),
       status: "ONGOING",
-      match_type: "normal",
+      format: "NORMALE",
       location_id: locationId,
       season_id: seasonId,
       draft_locked: true,
@@ -408,7 +408,7 @@ async function main() {
     data: {
       date: futureDate,
       status: "SCHEDULED",
-      match_type: "normal",
+      format: "NORMALE",
       location_id: location2.id,
       season_id: season2.id,
       draft_locked: false,

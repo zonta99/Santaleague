@@ -143,7 +143,7 @@ model Match {
   mvp_id             String?
   status             MatchStatus        @default(SCHEDULED)
   location_id        Int?
-  match_type         MatchType          @default(normal)
+  format             MatchFormat        @default(NORMALE)
   season_id          Int?
   created_at         DateTime?          @default(now()) @db.Timestamptz(6)
   updated_at         DateTime?          @default(now()) @db.Timestamptz(6)
@@ -157,6 +157,7 @@ model Match {
   DraftPick          DraftPick[]
   MatchRating        MatchRating[]
   Game               Game[]
+  MatchBracketSeed   MatchBracketSeed[]
   Location           Location?          @relation(fields: [location_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   User               User?              @relation(fields: [mvp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   Season             Season?            @relation(fields: [season_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -197,6 +198,7 @@ model Location {
   id          Int     @id @default(autoincrement())
   name        String  @db.VarChar(255)
   description String?
+  num_fields  Int     @default(1)
   league_id   String
   League      League  @relation(fields: [league_id], references: [id], onDelete: Cascade)
   Match       Match[]
@@ -221,20 +223,32 @@ model DraftPick {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Game {
-  id             Int          @id @default(autoincrement())
-  match_id       Int
-  game_number    Int          @db.SmallInt
-  team1_id       Int?
-  team2_id       Int?
-  mvp_id         String?
-  winner_team_id Int?
-  status         MatchStatus  @default(SCHEDULED)
-  Match          Match        @relation(fields: [match_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  User           User?        @relation(fields: [mvp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  Team1          Team?        @relation("Team1", fields: [team1_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  Team2          Team?        @relation("Team2", fields: [team2_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  WinnerTeam     Team?        @relation("WinnerTeam", fields: [winner_team_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  GameDetail     GameDetail[]
+  id              Int          @id @default(autoincrement())
+  match_id        Int
+  game_number     Int          @db.SmallInt
+  team1_id        Int?
+  team2_id        Int?
+  mvp_id          String?
+  winner_team_id  Int?
+  status          MatchStatus  @default(SCHEDULED)
+  round           String?
+  bracket_slot    Int?
+  fed_from_game1  Int?
+  fed_from_game2  Int?
+  Match           Match        @relation(fields: [match_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  User            User?        @relation(fields: [mvp_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Team1           Team?        @relation("Team1", fields: [team1_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Team2           Team?        @relation("Team2", fields: [team2_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  WinnerTeam      Team?        @relation("WinnerTeam", fields: [winner_team_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  GameDetail      GameDetail[]
+}
+
+model MatchBracketSeed {
+  id        Int    @id @default(autoincrement())
+  match_id  Int
+  position  Int
+  team_name String
+  Match     Match  @relation(fields: [match_id], references: [id], onDelete: Cascade)
 }
 
 model MatchRating {
@@ -387,9 +401,11 @@ enum MatchStatus {
   CANCELED
 }
 
-enum MatchType {
-  normal
-  torneo
+enum MatchFormat {
+  NORMALE
+  GIRONE
+  BRACKET_ELIMINATION
+  BRACKET_GROUPS
 }
 
 enum GameEventType {

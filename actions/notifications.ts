@@ -8,6 +8,7 @@ import { currentUser, currentRole } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { sendNotificationEmail } from "@/lib/mail";
 import { NotificationPreferencesSchema } from "@/schemas";
+import { emitForUser } from "@/lib/notification-emitter";
 
 const notificationTypeToPreferenceKey: Record<NotificationType, keyof typeof prefFields> = {
   MATCH_SCHEDULED: "match_scheduled",
@@ -74,6 +75,17 @@ export async function createNotificationsForUsers(
         metadata: metadata ?? undefined,
       })),
     });
+
+    // Push to any connected SSE clients
+    const created = await db.notification.findMany({
+      where: { user_id: { in: eligibleUserIds }, type, title, message },
+      orderBy: { created_at: "desc" },
+      take: eligibleUserIds.length,
+    });
+    for (const userId of eligibleUserIds) {
+      const userNotifs = created.filter((n) => n.user_id === userId);
+      if (userNotifs.length > 0) emitForUser(userId, userNotifs);
+    }
   }
 
   await Promise.allSettled(

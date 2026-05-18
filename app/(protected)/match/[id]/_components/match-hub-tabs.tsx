@@ -39,9 +39,14 @@ type GameRatingItem = {
 type GameItem = {
   id: number;
   game_number: number;
+  status: string;
+  round?: string | null;
+  bracket_slot?: number | null;
   team1_id: number | null;
   team2_id: number | null;
   winner_team_id: number | null;
+  fed_from_game1?: number | null;
+  fed_from_game2?: number | null;
   Team1: { id: number; name: string; logo?: string | null } | null;
   Team2: { id: number; name: string; logo?: string | null } | null;
   WinnerTeam?: { id: number; name: string } | null;
